@@ -7,42 +7,19 @@
           <div
             class="character"
             :style="c.styleObj"
+            @click="onSelectEditCharacter(c.key)"
           ><span>{{ c.data.sheetInfo.characterName }}</span></div>
+        </template>
+        <template v-if="selectCharacterKey">
+          <label>入力内容はリアルタイムで反映されます（画像はアップロードボタンで反映）</label>
+          <character-form mode="update" :character="characterList.find(c => c.key === selectCharacterKey)?.data" />
         </template>
       </div>
     </details>
     <details open>
       <summary>追加</summary>
       <div class="h-box">
-        <label class="url"><span>キャラクターシート倉庫URL</span><input type="text" v-model="character.sheetInfo.url" placeholder="https://character-sheets.appspot.com/shinobigami/edit.html?key="></label>
-        <label class="sheet-view-pass"><span>秘匿情報閲覧パス</span><input type="text" v-model="character.sheetViewPass" placeholder=""><button @click="onReadSheet()">読込</button></label>
-        <character-basic-info :character="character" mode="edit" />
-        <skill-table :character="character" mode="edit" />
-        <ninja-arts-table :character="character" mode="edit" />
-        <background-table :character="character" />
-        <special-arts-table :character="character" />
-        <ninja-tool-table :character="character" />
-        <label class="color">
-          <span>チャット文字色</span>
-          <font-color-select v-model="character.color" />
-        </label>
-        <div class="chit-image-box">
-          <template v-for="(n, ind) in chitImageList" :key="n.key">
-            <label>
-              コマ画像{{ ind + 1 }}
-              <image-input :image-info="n" type="chit" @update="value => onUpdateImage('chit', n.key, value)" />
-            </label>
-          </template>
-        </div>
-        <div class="stand-image-box">
-          <template v-for="(n, ind) in standImageList" :key="n.key">
-            <label>
-              立ち絵画像{{ ind + 1 }}
-              <image-input :image-info="n" type="stand" @update="value => onUpdateImage('stand', n.key, value)" />
-            </label>
-          </template>
-        </div>
-        <button @click="insertCharacter()">Add</button>
+        <character-form mode="insert" :character="character" @insert="insertCharacter" />
       </div>
     </details>
   </div>
@@ -52,24 +29,14 @@
 import { computed, defineComponent, reactive, ref } from 'vue'
 import Store, { Character, ImageInfo } from './data'
 import UserSettingStore from '@/feature/user-setting/data'
-import { ShinobigamiHelper } from '@/core/utility/shinobigami'
-import NinjaArtsTable from '@/components/shinobi-gami/ninja-arts-table.vue'
 import SkillTable from '@/components/shinobi-gami/skill-table.vue'
-import CharacterBasicInfo from '@/components/shinobi-gami/character-basic-info.vue'
-import { convertNumberNull } from '@/core/utility/PrimaryDataUtility'
-import FontColorSelect from '@/components/font-color-select.vue'
-import BackgroundTable from '@/components/shinobi-gami/background-table.vue'
 import { removeFilter } from '@/core/utility/typescript'
-import SpecialArtsTable from '@/components/shinobi-gami/special-arts-table.vue'
-import NinjaToolTable from '@/components/shinobi-gami/ninja-tool-table.vue'
-import ImageInput from '@/feature/character/image-input.vue'
-import { v4 as uuidV4 } from 'uuid'
-import { errorDialog } from '@/core/utility/dialog'
+import CharacterForm from '@/feature/character/character-form.vue'
 
 export default defineComponent({
   name: 'character-pane',
   emits: ['close'],
-  components: { ImageInput, NinjaToolTable, SpecialArtsTable, BackgroundTable, FontColorSelect, CharacterBasicInfo, NinjaArtsTable, SkillTable },
+  components: { CharacterForm },
   setup(_, { emit }) {
     const userSettingStore = UserSettingStore.injector()
     const userSetting = computed(() => userSettingStore.userSetting)
@@ -129,65 +96,25 @@ export default defineComponent({
       currentStandImage: -1
     })
 
-    const onReadSheet = async () => {
-      console.log(character.sheetInfo.url)
-      if (!character.sheetInfo.url) return
-      const helper = new ShinobigamiHelper(character.sheetInfo.url, character.sheetViewPass)
-      if (!helper.isThis()) {
-        console.log('is not this')
-        return
-      }
-      const { data: rd, jsons } = await helper.getData()
-      console.log(jsons)
-      console.log(rd)
-      if (!rd) {
-        await errorDialog({
-          title: 'Loading Error',
-          text: 'URLまたは秘匿情報閲覧パスが誤っています。'
-        })
-        return
-      }
-
-      character.pcNo = convertNumberNull(rd.scenario.pcno.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)))
-      character.sheetInfo = rd
-    }
-
-    const chitImageList = ref<ImageInfo[]>([{ key: uuidV4(), name: '', type: 'new-file', src: '' }])
-    const standImageList = ref<ImageInfo[]>([{ key: uuidV4(), name: '', type: 'new-file', src: '' }])
-
-    const onUpdateImage = (type: 'chit' | 'stand', key: string, value: ImageInfo) => {
-      const list: ImageInfo[] = type === 'chit' ? chitImageList.value : standImageList.value
-      const index = list.findIndex(ci => ci.key === key)
-      if (index > -1) {
-        list[index].type = value.type
-        list[index].name = value.name
-        list[index].src = value.src
-      }
-      console.log(value.name)
-      if (list[list.length - 1].name) {
-        list.push({ key: uuidV4(), type: 'new-file', name: '', src: '' })
-      }
-      if (!value.name && index > -1) {
-        list.splice(index, 1)
-      }
-    }
-
-    const insertCharacter = () => {
+    const insertCharacter = (chitImageList: ImageInfo[], standImageList: ImageInfo[]) => {
       // eslint-disable-next-line no-irregular-whitespace
       const deleteSpace = (name: string) => name.replaceAll(/ 　/g, '')
       removeFilter(character.sheetInfo.ninjaArtsList, n => !deleteSpace(n.name).length)
       removeFilter(character.sheetInfo.backgroundList, n => !deleteSpace(n.name).length)
-      state.insertData([character], [[chitImageList.value.filter(ci => !!ci.name), standImageList.value.filter(ci => !!ci.name)]])
+      state.insertData([character], [[chitImageList.filter(ci => !!ci.name), standImageList.filter(ci => !!ci.name)]])
       emit('close')
     }
 
+    const selectCharacterKey = ref<string | null>(null)
+    const onSelectEditCharacter = (characterKey: string) => {
+      selectCharacterKey.value = characterKey
+    }
+
     return {
+      selectCharacterKey,
+      onSelectEditCharacter,
       characterList: state.makeWrapCharacterList(),
-      onReadSheet,
       userSetting,
-      chitImageList,
-      standImageList,
-      onUpdateImage,
       character,
       SkillTable,
       skillColumnList: ['器術', '体術', '忍術', '謀術', '戦術', '妖術'],
@@ -208,26 +135,6 @@ export default defineComponent({
   padding-top: 0.5rem;
   gap: 0.5rem;
   width: 100%;
-}
-
-.url {
-  text-align: left;
-  @include common.flex-box(column, stretch, flex-start);
-  width: 100%;
-}
-
-label.color {
-  @include common.flex-box(column, flex-start, flex-start);
-}
-
-.chit-image-box,
-.stand-image-box {
-  width: 100%;
-  @include common.flex-box(row, flex-start, stretch, wrap);
-
-  label {
-    @include common.flex-box(column, flex-start, stretch);
-  }
 }
 
 details {

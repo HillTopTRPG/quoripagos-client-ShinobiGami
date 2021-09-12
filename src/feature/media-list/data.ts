@@ -45,7 +45,7 @@ export type MediaStore = {
   dataLocation: 'server' | 'direct';
 };
 
-type Store = {
+export type Store = {
   ready: boolean,
   list: StoreData<MediaStore>[];
   requestData: () => Promise<void>;

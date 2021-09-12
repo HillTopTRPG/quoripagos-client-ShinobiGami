@@ -6,7 +6,6 @@ import SocketStore from '@/core/data/socket'
 import { getFileName } from '@/core/utility/PrimaryDataUtility'
 import MediaListStore, { getUrlTypes, MediaStore } from '@/feature/media-list/data'
 import { ComputedRef } from '@vue/reactivity'
-import { removeFilter } from '@/core/utility/typescript'
 
 export type ImageInfo = {
   key: string;
@@ -61,6 +60,7 @@ export type Store = {
   characterList: StoreData<Character>[];
   requestData: () => Promise<void>;
   insertData: (c: Character[], mediaList: [ImageInfo[], ImageInfo[]][]) => Promise<void>;
+  uploadCharacterImage: (character: Character, mediaInfo: [ImageInfo[], ImageInfo[]]) => Promise<void>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   makeWrapCharacterList: () => ComputedRef<(StoreData<Character> & { styleObj: any })[]>;
 }
@@ -98,45 +98,55 @@ export default makeStore<Store>('character-store', () => {
   }
   setup().then()
 
-  const insertDataWrapper = async (characterList: Character[], mediaList: [ImageInfo[], ImageInfo[]][]): Promise<void> => {
-    mediaList.forEach(tuple => {
-      tuple.forEach(list => {
-        removeFilter(list, t => !t.name)
-      })
-    })
-    const uploadMediaInfoList: UploadMediaInfo[] = mediaList.flatMap(tuple => tuple.flatMap(list => list
-      .filter(img => img.type === 'new-file')
+  const makeUploadMediaInfoList = (mediaList: [ImageInfo[], ImageInfo[]][]): UploadMediaInfo[] =>
+    mediaList.flatMap(mediaInfo => mediaInfo.flatMap((list, idx) => list
+      .filter(img => img.type === 'new-file' && img.name)
       .map(img => ({
         key: img.key,
         url: '',
         dataLocation: 'server',
         ...getUrlTypes(img.name),
         rawPath: getFileName(img.name),
-        tag: 'chit-image',
+        tag: idx === 0 ? 'chit' : 'stand',
         name: img.name,
         arrayBuffer: img.src
-      })))
-    )
+      }))))
 
-    console.log(uploadMediaInfoList)
-
+  const uploadAndKeyReplace = async (uploadMediaInfoList: UploadMediaInfo[], mediaList: [ImageInfo[], ImageInfo[]][]) => {
     const resultList = await socketStore.sendSocketServerRoundTripRequest<UploadMediaRequest, UploadMediaResponse>(
       'media-api-upload',
       { uploadMediaInfoList, option: {} }
     )
     let count = 0
+    mediaList.forEach(tuple => {
+      tuple.forEach(
+        list => list
+          .filter(img => img.type === 'new-file' && img.name)
+          .forEach(img => (img.key = resultList[count++].key))
+      )
+    })
+  }
+
+  const uploadCharacterImage = async (character: Character, mediaInfo: [ImageInfo[], ImageInfo[]]): Promise<void> => {
+    const uploadMediaInfoList: UploadMediaInfo[] = makeUploadMediaInfoList([mediaInfo])
+    console.log(uploadMediaInfoList)
+    await uploadAndKeyReplace(uploadMediaInfoList, [mediaInfo])
+    character.chitImageList = mediaInfo[0].map(t => t.key)
+    character.currentChitImage = character.chitImageList.length ? 0 : -1
+    character.standImageList = mediaInfo[1].map(t => t.key)
+    character.currentStandImage = character.standImageList.length ? 0 : -1
+  }
+
+  const insertDataWrapper = async (characterList: Character[], mediaList: [ImageInfo[], ImageInfo[]][]): Promise<void> => {
+    const uploadMediaInfoList: UploadMediaInfo[] = makeUploadMediaInfoList(mediaList)
+    console.log(uploadMediaInfoList)
+    await uploadAndKeyReplace(uploadMediaInfoList, mediaList)
     mediaList.forEach((tuple, idx) => {
-      tuple.forEach(list => list.filter(img => img.type === 'new-file').forEach(img => {
-        const result = resultList[count++]
-        img.key = result.key
-      }))
       characterList[idx].chitImageList = tuple[0].map(t => t.key)
       characterList[idx].currentChitImage = characterList[idx].chitImageList.length ? 0 : -1
       characterList[idx].standImageList = tuple[1].map(t => t.key)
       characterList[idx].currentStandImage = characterList[idx].standImageList.length ? 0 : -1
     })
-    console.log('$$$$ UploadMediaResult $$$$')
-    console.log(resultList)
     await insertData(...characterList)
   }
 
@@ -167,6 +177,7 @@ export default makeStore<Store>('character-store', () => {
     },
     requestData,
     insertData: insertDataWrapper,
+    uploadCharacterImage,
     makeWrapCharacterList
   }
 })

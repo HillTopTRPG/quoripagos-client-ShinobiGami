@@ -27,12 +27,14 @@
       </label>
     </template>
   </div>
+  <button v-if="mode === 'update'" @click="uploadImages()">Image Upload</button>
+  <button v-if="mode === 'insert'" @click="insertCharacter()">Add</button>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref, PropType, reactive } from 'vue'
-import { Character, ImageInfo } from '@/feature/character/data'
-import MediaListStore from '@/feature/media-list/data'
+import CharacterStore, { Character, ImageInfo } from '@/feature/character/data'
+import MediaListStore, { MediaStore } from '@/feature/media-list/data'
 import CharacterBasicInfo from '@/components/shinobi-gami/character-basic-info.vue'
 import SkillTable from '@/components/shinobi-gami/skill-table.vue'
 import NinjaArtsTable from '@/components/shinobi-gami/ninja-arts-table.vue'
@@ -43,6 +45,9 @@ import FontColorSelect from '@/components/font-color-select.vue'
 import ImageInput from '@/feature/character/image-input.vue'
 import { v4 as uuidV4 } from 'uuid'
 import { StoreData } from '@/core/utility/FileUtility'
+import { ShinobigamiHelper } from '@/core/utility/shinobigami'
+import { errorDialog } from '@/core/utility/dialog'
+import { convertNumberNull } from '@/core/utility/PrimaryDataUtility'
 
 export default defineComponent({
   name: 'character-form',
@@ -51,30 +56,42 @@ export default defineComponent({
     character: {
       type: Object as PropType<Character>,
       required: true
+    },
+    mode: {
+      type: String as PropType<'update' | 'insert'>,
+      required: true
     }
   },
-  emits: [],
+  emits: ['insert'],
   setup(props, { emit }) {
     const mediaListState = MediaListStore.injector()
+    const characterState = CharacterStore.injector()
+
+    console.log(props.character)
 
     const chitImageList = ref<ImageInfo[]>(props.character.chitImageList
       .map(ci => mediaListState.list.find(m => m.key === ci))
-      .filter((m): m is StoreData<MediaListStore> => m && m.data)
+      .filter((m): m is StoreData<MediaStore> => (m && Boolean(m.data)) || false)
       .map((m): ImageInfo => ({
         key: m.key,
-        name: m.data?.name,
+        name: m.data?.name || '',
         type: 'uploaded',
-        src: m.data?.url
-      })))
+        src: m.data?.url || ''
+      }))
+      .concat({ key: uuidV4(), type: 'new-file', name: '', src: '' })
+    )
+
     const standImageList = ref<ImageInfo[]>(props.character.standImageList
       .map(ci => mediaListState.list.find(m => m.key === ci))
-      .filter((m): m is StoreData<MediaListStore> => m && m.data)
+      .filter((m): m is StoreData<MediaStore> => (m && Boolean(m.data)) || false)
       .map((m): ImageInfo => ({
         key: m.key,
-        name: m.data?.name,
+        name: m.data?.name || '',
         type: 'uploaded',
-        src: m.data?.url
-      })))
+        src: m.data?.url || ''
+      }))
+      .concat({ key: uuidV4(), type: 'new-file', name: '', src: '' })
+    )
 
     const onUpdateImage = (type: 'chit' | 'stand', key: string, value: ImageInfo) => {
       const list: ImageInfo[] = type === 'chit' ? chitImageList.value : standImageList.value
@@ -95,7 +112,42 @@ export default defineComponent({
       }
     }
 
+    const insertCharacter = () => {
+      emit('insert', chitImageList.value, standImageList.value)
+    }
+
+    const uploadImages = () => {
+      characterState.uploadCharacterImage(props.character, [chitImageList.value, standImageList.value])
+    }
+
+    const onReadSheet = async () => {
+      console.log(props.character.sheetInfo.url)
+      if (!props.character.sheetInfo.url) return
+      const helper = new ShinobigamiHelper(props.character.sheetInfo.url, props.character.sheetViewPass)
+      if (!helper.isThis()) {
+        console.log('is not this')
+        return
+      }
+      const { data: rd, jsons } = await helper.getData()
+      console.log(jsons)
+      console.log(rd)
+      if (!rd) {
+        await errorDialog({
+          title: 'Loading Error',
+          text: 'URLまたは秘匿情報閲覧パスが誤っています。'
+        })
+        return
+      }
+
+      const character = props.character
+      character.pcNo = convertNumberNull(rd.scenario.pcno.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)))
+      character.sheetInfo = rd
+    }
+
     return {
+      onReadSheet,
+      insertCharacter,
+      uploadImages,
       characterWrap: reactive(props.character),
       chitImageList,
       standImageList,
@@ -108,25 +160,23 @@ export default defineComponent({
 <style scoped lang="scss">
 @use "../../components/common";
 
-.image-input {
+.chit-image-box,
+.stand-image-box {
+  width: 100%;
+  @include common.flex-box(row, flex-start, stretch, wrap);
+
+  label {
+    @include common.flex-box(column, flex-start, stretch);
+  }
+}
+
+.url {
+  text-align: left;
   @include common.flex-box(column, stretch, flex-start);
+  width: 100%;
+}
 
-  img {
-    border: 1px solid gray;
-  }
-
-  &.chit img {
-    width: 5em;
-    height: 5em;
-    object-fit: contain;
-    object-position: center bottom;
-  }
-
-  &.stand img {
-    width: 6em;
-    height: 9em;
-    object-fit: contain;
-    object-position: center bottom;
-  }
+label.color {
+  @include common.flex-box(column, flex-start, flex-start);
 }
 </style>

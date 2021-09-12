@@ -97,9 +97,8 @@ export default makeStore<Store>('user-setting-store', () => {
     },
     get userSetting() {
       const user = userStore.userList.find(u => u.key === userStore.userLoginResponse?.userKey)
-      const userName = user?.name
-      if (!userName) throw new ApplicationError('You are not logged in yet.(3)')
-      const userSetting = state.userSettingList.find(us => us.data?.userName === userName)
+      if (!user) throw new ApplicationError('You are not logged in yet.(3)')
+      const userSetting = state.userSettingList.find(us => us.data?.userName === user.name)
       return userSetting?.data || null
     },
     requestData,

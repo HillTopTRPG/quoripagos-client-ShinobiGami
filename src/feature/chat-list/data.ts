@@ -82,7 +82,6 @@ export default makeStore<Store>('chat-list-store', () => {
       const baseUrl = 'https://bcdice.onlinesession.app'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const json: any = await (await fetch(`${baseUrl}/v2/game_system/ShinobiGami/roll?command=${encodeURIComponent(command)}`)).json()
-      console.log(JSON.stringify(json, null, '  '))
 
       if (!json.ok) throw json
       delete json.ok

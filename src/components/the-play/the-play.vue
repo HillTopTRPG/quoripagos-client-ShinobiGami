@@ -132,11 +132,12 @@ export default defineComponent({
     const userStore = UserStore.injector()
     const characterList = computed(() => characterStore.characterList)
     const selfName = computed(() => userStore.selfUser?.name || null)
-    const targetCharacterList = computed(() =>
-      userStore.selfUser?.refList?.filter(r => r.type === 'character')
+    const targetCharacterList = ref<{ name: string, key: string | null }[]>([])
+    watch([() => userStore.selfUser?.refList, () => characterStore.characterList], () => {
+      targetCharacterList.value = userStore.selfUser?.refList?.filter(r => r.type === 'character')
         .map(r => ({ name: characterStore.characterList.find(c => c.key === r.key)?.data?.sheetInfo.characterName || '', key: r.key }))
-        .filter(cn => cn.name)
-    )
+        .filter(cn => cn.name) || []
+    }, { deep: true, immediate: true })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalStyle = reactive<any>({})
@@ -180,7 +181,6 @@ export default defineComponent({
       else if (bcdiceResult?.success) diceResult = '成功'
       if (bcdiceResult?.fumble) diceResult = 'ファンブル'
       else if (bcdiceResult?.failure) diceResult = '失敗'
-      console.log(JSON.stringify(bcdiceResult, null, '  '))
       return {
         bcdiceResult,
         insertChat: async () => {
@@ -262,12 +262,6 @@ export default defineComponent({
         const character = chat.fromType === 'character' ? characterStore.characterList.find(c => c.key === chat.from)?.data || null : null
         const standImageKey = character?.standImageList.length && character?.standImageList.length > character?.currentStandImage ? character?.standImageList[character?.currentStandImage || 0] : null
         const standImageUrl = mediaListStore.list.find(n => n.key === standImageKey)?.data?.url || null
-        console.log('standImage')
-        console.log(chat.fromType)
-        console.log(chat.from)
-        console.log(character)
-        console.log(standImageKey)
-        console.log(standImageUrl)
 
         chatHistoryList.value.unshift({
           key,
