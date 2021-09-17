@@ -1,5 +1,5 @@
 <template>
-  <span class="color-palette">
+  <span class="color-palette" :class="editable ? '' : 'non-editable'">
     <span
       class="color"
       :class="c === modelValue ? 'selected' : ''"
@@ -19,9 +19,13 @@ export default defineComponent({
     modelValue: {
       type: String,
       required: true
+    },
+    editable: {
+      type: Boolean,
+      required: true
     }
   },
-  setup(_, { emit }) {
+  setup(props, { emit }) {
     const colorList: string[] = []
     colorList.push('#3E2723')
     colorList.push('#757575')
@@ -67,7 +71,7 @@ export default defineComponent({
     return {
       colorList,
       selectColor: (c: string) => {
-        emit('update:modelValue', c)
+        if (props.editable) emit('update:modelValue', c)
       }
     }
   }
@@ -80,6 +84,12 @@ export default defineComponent({
 .color-palette {
   @include common.flex-box(row, flex-start, flex-start, wrap);
   gap: 0.2rem;
+
+  &.non-editable {
+    .color {
+      cursor: default;
+    }
+  }
 }
 
 .color {

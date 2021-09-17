@@ -40,9 +40,9 @@ type RightPaneTask = {
 export default defineComponent({
   name: 'modal-area',
   setup() {
-    const userStore = UserStore.injector()
+    const userState = UserStore.injector()
     const menuItemList = reactive<MenuItem[]>([])
-    const me = userStore.userList.find(u => u.key === userStore.userLoginResponse?.userKey)
+    const me = userState.userList.find(u => u.key === userState.userLoginResponse?.userKey)
     const userType = me?.type || 'pl'
     menuItemList.push({ label: 'ローカル設定', type: 'local-setting', isUnique: true })
     menuItemList.push({ label: 'ユーザー設定', type: 'user-setting', isUnique: true })

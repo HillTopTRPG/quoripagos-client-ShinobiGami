@@ -13,7 +13,7 @@ export default defineComponent({
   name: 'image-input',
   props: {
     type: {
-      type: String as PropType<'chit' | 'stand'>,
+      type: String as PropType<'chit' | 'stand' | 'back'>,
       required: true
     },
     imageInfo: {
@@ -65,6 +65,13 @@ export default defineComponent({
     width: 6em;
     height: 9em;
     object-fit: contain;
+    object-position: center bottom;
+  }
+
+  &.back img {
+    width: 9em;
+    height: 6em;
+    object-fit: cover;
     object-position: center bottom;
   }
 }

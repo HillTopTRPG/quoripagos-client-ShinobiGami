@@ -2,44 +2,47 @@
     <transition name="character-fade">
       <div
         class="character-detail-view"
-        :style="{ '--color': character.data.color }"
+        :style="{ '--color': character.color }"
+        v-if="character.sheetInfo"
       >
         <div class="header">
           <div class="main">
             <h2>
               <ruby>
-                {{ character.data.sheetInfo.characterName }}
+                {{ character.sheetInfo.characterName }}
                 <rp>（</rp>
-                <rt>{{ character.data.sheetInfo.characterNameKana }}</rt>
+                <rt>{{ character.sheetInfo.characterNameKana }}</rt>
                 <rp>）</rp>
               </ruby>
             </h2>
-            <div class="player">{{ character.data.sheetInfo.playerName }}</div>
+            <div class="player">{{ character.sheetInfo.playerName }}</div>
           </div>
           <div class="other">
-            <div class="style">{{ character.data.sheetInfo.upperStyle }} - {{ character.data.sheetInfo.subStyle || '上位流派' }} - {{ character.data.sheetInfo.level }}</div>
-            <div class="style-rule">{{ character.data.sheetInfo.stylerule }}</div>
-            <div class="personal">{{ character.data.sheetInfo.belief }} - {{ character.data.sheetInfo.cover }} - {{ character.data.sheetInfo.age }} - {{ character.data.sheetInfo.sex }}</div>
+            <div class="style">{{ character.sheetInfo.upperStyle }} - {{ character.sheetInfo.subStyle || '上位流派' }} - {{ character.sheetInfo.level }}</div>
+            <div class="style-rule">{{ character.sheetInfo.stylerule }}</div>
+            <div class="personal">{{ character.sheetInfo.belief }} - {{ character.sheetInfo.cover }} - {{ character.sheetInfo.age }} - {{ character.sheetInfo.sex }}</div>
           </div>
         </div>
         <div class="backgrounds">
-          <div class="background" v-for="(bg, ind) in character.data.sheetInfo.backgroundList" :key="ind">{{ bg.name }}</div>
+          <div class="background" v-for="(bg, ind) in character.sheetInfo.backgroundList" :key="ind">{{ bg.name }}</div>
         </div>
 
         <div class="part-wrap">
           <skill-table-set
-            :character="character.data"
+            :character="character"
             @clearArts="onClearArts()"
-            :target-arts="selectedNinjaArtsIndex !== null ? character.data?.sheetInfo.ninjaArtsList[selectedNinjaArtsIndex]?.name || null : null"
-            :character-key="character.key"
+            :target-arts="selectedNinjaArtsIndex !== null ? character.sheetInfo.ninjaArtsList[selectedNinjaArtsIndex]?.name || null : null"
+            :character-key="characterKey"
             v-model:other-character-key="otherCharacterKey"
             v-model:target-skill="targetSkill"
           />
         </div>
         <div class="part-wrap">
           <ninja-arts-table
-            :character="character.data"
-            :character-key="character.key"
+            :sheet-info="character.sheetInfo"
+            :url="url"
+            :sheet-view-pass="character.sheetViewPass"
+            :character-key="characterKey"
             mode="normal"
             v-model:select-index="selectedNinjaArtsIndex"
           />
@@ -50,8 +53,7 @@
 
 <script lang="ts">
 import { defineComponent, PropType, ref, watch } from 'vue'
-import { Character } from '@/feature/character/data'
-import { StoreData } from '@/core/utility/FileUtility'
+import { CharacterBase } from '@/feature/character/data'
 import SkillTableSet from '@/components/shinobi-gami/skill-table-set.vue'
 import NinjaArtsTable from '@/components/shinobi-gami/ninja-arts-table.vue'
 import { SkillTable } from '@/core/utility/shinobigami'
@@ -61,7 +63,15 @@ export default defineComponent({
   components: { NinjaArtsTable, SkillTableSet },
   props: {
     character: {
-      type: Object as PropType<StoreData<Character>>,
+      type: Object as PropType<CharacterBase>,
+      required: true
+    },
+    characterKey: {
+      type: String,
+      required: true
+    },
+    url: {
+      type: String,
       required: true
     }
   },
@@ -75,7 +85,7 @@ export default defineComponent({
         targetSkill.value = null
         return
       }
-      const targetSkillRaw = props.character.data?.sheetInfo.ninjaArtsList[selectedNinjaArtsIndex.value || 0]?.targetSkill
+      const targetSkillRaw = props.character.sheetInfo?.ninjaArtsList[selectedNinjaArtsIndex.value || 0]?.targetSkill
       if (SkillTable.flatMap(tt => tt).some(t => t === targetSkillRaw)) {
         targetSkill.value = targetSkillRaw || null
       } else {

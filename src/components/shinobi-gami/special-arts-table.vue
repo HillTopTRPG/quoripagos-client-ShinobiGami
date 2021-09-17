@@ -1,5 +1,5 @@
 <template>
-  <table class="special-arts">
+  <table class="special-arts" :class="isRawViewMode ? 'raw-view' : ''">
     <thead>
       <tr>
         <th class="name">名称</th>
@@ -9,51 +9,72 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="(sa, ind) in character.sheetInfo.specialArtsList" :key="ind">
-        <td class="name"><span><input type="text" v-model="sa.name"></span></td>
+      <tr v-for="(sa, ind) in sheetInfo.specialArtsList" :key="ind">
+        <td class="name"><span>
+          <template v-if="isRawViewMode">{{ sa.name }}</template>
+          <input type="text" v-model="sa.name" v-else>
+        </span></td>
         <td class="skill">
           <span>
-            <select v-model="sa.skill">
+            <template v-if="isRawViewMode">{{ sa.skill }}</template>
+            <select v-model="sa.skill" v-else>
               <option value=""></option>
               <option :value="s" v-for="s in skillList" :key="s">{{ s }}</option>
             </select>
           </span>
         </td>
         <td class="effect">
-          <textarea v-model="sa.effect"></textarea>
+          <template v-if="isRawViewMode">{{ sa.effect }}</template>
+          <textarea v-model="sa.effect" v-else></textarea>
         </td>
         <td class="direction">
-          <textarea v-model="sa.direction"></textarea>
+          <template v-if="isRawViewMode">{{ sa.direction }}</template>
+          <textarea v-model="sa.direction" v-else></textarea>
         </td>
       </tr>
     </tbody>
-    <tfoot>
-    <tr>
-      <td colspan="4">
-        <button @click="addSpecialArts()">追加</button>
-      </td>
-    </tr>
+    <tfoot v-if="!isRawViewMode">
+      <tr>
+        <td colspan="4">
+          <button @click="addSpecialArts()">追加</button>
+        </td>
+      </tr>
     </tfoot>
   </table>
 </template>
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { Character } from '@/feature/character/data'
-import { ShinobigamiHelper } from '@/core/utility/shinobigami'
+import { ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
+import UserStore from '@/core/data/user'
 
 export default defineComponent({
   name: 'special-arts-table',
   props: {
-    character: {
-      type: Object as PropType<Character>,
+    sheetInfo: {
+      type: Object as PropType<ShinobiGami>,
+      required: true
+    },
+    mode: {
+      type: String as PropType<'normal' | 'view' | 'update' | 'insert'>,
+      require: true
+    },
+    characterKey: {
+      type: String,
+      required: true
+    },
+    url: {
+      type: String,
+      required: true
+    },
+    sheetViewPass: {
+      type: String,
       required: true
     }
   },
   setup(props) {
-    console.log(props.character)
-    const reloadBackground = async () => {
-      const helper = new ShinobigamiHelper(props.character.sheetInfo.url, props.character.sheetViewPass)
+    const reloadSpecialArts = async () => {
+      const helper = new ShinobigamiHelper(props.url, props.sheetViewPass)
       if (!helper.isThis()) {
         console.log('is not this')
         return
@@ -62,14 +83,14 @@ export default defineComponent({
       console.log(jsons)
       console.log(rd)
       if (!rd) return
-      const backgroundList = props.character.sheetInfo.backgroundList
-      backgroundList.splice(0, props.character.sheetInfo.backgroundList.length, ...rd.backgroundList)
+      const specialArtsList = props.sheetInfo.specialArtsList
+      specialArtsList.splice(0, specialArtsList.length, ...rd.specialArtsList)
     }
 
-    const skillList = computed(() => props.character.sheetInfo.skill.learnedList.map(l => l.name).filter((s, ind, self) => self.findIndex(ss => ss === s) === ind))
+    const skillList = computed(() => props.sheetInfo.skill.learnedList.map(l => l.name).filter((s, ind, self) => self.findIndex(ss => ss === s) === ind))
 
     const addSpecialArts = () => {
-      const specialArtsList = props.character.sheetInfo.specialArtsList
+      const specialArtsList = props.sheetInfo.specialArtsList
       specialArtsList.push({
         name: '',
         skill: skillList.value[0] || '',
@@ -78,8 +99,14 @@ export default defineComponent({
       })
     }
 
+    const userState = UserStore.injector()
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
+    const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
+
     return {
-      reloadBackground,
+      isRawViewMode,
+      reloadSpecialArts,
       addSpecialArts,
       skillList
     }
@@ -94,7 +121,17 @@ table.special-arts {
   border-collapse: collapse;
   border-spacing: 0;
   table-layout: fixed;
-  font-size: var(--special-arts-table-font-size);
+  font-size: var(--sheet-font-size);
+
+  &.raw-view {
+    label {
+      cursor: default;
+    }
+
+    tbody tr {
+      cursor: default;
+    }
+  }
 
   label {
     cursor: pointer;

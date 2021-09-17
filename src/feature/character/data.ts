@@ -14,19 +14,22 @@ export type ImageInfo = {
   name: string;
 }
 
-export type Character = {
-  type: 'character';
+export type CharacterBase = {
   plot: number;
-  pcNo: number | null;
   isFumble: boolean;
   isActed: boolean;
+  sheetViewPass: string;
+  sheetInfo: ShinobiGami | null;
   color: string;
   chitImageList: string[];
   standImageList: string[];
   currentChitImage: number;
   currentStandImage: number;
+}
+
+export type Character = CharacterBase & {
+  type: 'character';
   sheetInfo: ShinobiGami;
-  sheetViewPass: string;
 }
 
 export type UrlType = 'youtube' | 'image' | 'music' | 'setting' | 'unknown';
@@ -60,7 +63,7 @@ export type Store = {
   characterList: StoreData<Character>[];
   requestData: () => Promise<void>;
   insertData: (c: Character[], mediaList: [ImageInfo[], ImageInfo[]][]) => Promise<void>;
-  uploadCharacterImage: (character: Character, mediaInfo: [ImageInfo[], ImageInfo[]]) => Promise<void>;
+  uploadCharacterImage: (character: CharacterBase, mediaInfo: [ImageInfo[], ImageInfo[]]) => Promise<void>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   makeWrapCharacterList: () => ComputedRef<(StoreData<Character> & { styleObj: any })[]>;
 }
@@ -71,15 +74,12 @@ export default makeStore<Store>('character-store', () => {
     characterList: []
   })
 
-  const socketStore = SocketStore.injector()
-
   const { requestData, insertData } = commonStoreDataProcess(
     state.characterList,
     'character',
     [
       'type',
       'plot',
-      'pcNo',
       'isFumble',
       'isActed',
       'color',
@@ -112,8 +112,10 @@ export default makeStore<Store>('character-store', () => {
         arrayBuffer: img.src
       }))))
 
+  const socketState = SocketStore.injector()
+
   const uploadAndKeyReplace = async (uploadMediaInfoList: UploadMediaInfo[], mediaList: [ImageInfo[], ImageInfo[]][]) => {
-    const resultList = await socketStore.sendSocketServerRoundTripRequest<UploadMediaRequest, UploadMediaResponse>(
+    const resultList = await socketState.sendSocketServerRoundTripRequest<UploadMediaRequest, UploadMediaResponse>(
       'media-api-upload',
       { uploadMediaInfoList, option: {} }
     )
@@ -127,7 +129,7 @@ export default makeStore<Store>('character-store', () => {
     })
   }
 
-  const uploadCharacterImage = async (character: Character, mediaInfo: [ImageInfo[], ImageInfo[]]): Promise<void> => {
+  const uploadCharacterImage = async (character: CharacterBase, mediaInfo: [ImageInfo[], ImageInfo[]]): Promise<void> => {
     const uploadMediaInfoList: UploadMediaInfo[] = makeUploadMediaInfoList([mediaInfo])
     console.log(uploadMediaInfoList)
     await uploadAndKeyReplace(uploadMediaInfoList, [mediaInfo])
@@ -147,15 +149,15 @@ export default makeStore<Store>('character-store', () => {
       characterList[idx].standImageList = tuple[1].map(t => t.key)
       characterList[idx].currentStandImage = characterList[idx].standImageList.length ? 0 : -1
     })
-    await insertData(...characterList)
+    await insertData(...characterList.map(c => ({ data: c })))
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const makeWrapCharacterList = (): ComputedRef<(StoreData<Character> & { styleObj: any })[]> => {
-    const mediaListStore = MediaListStore.injector()
+    const mediaListState = MediaListStore.injector()
     return computed(() => state.characterList.map(c => {
-      const chitImageUrl = mediaListStore.list.find(m => m.key === c.data?.chitImageList[c.data?.currentChitImage])?.data?.url
-      const standImageUrl = mediaListStore.list.find(m => m.key === c.data?.standImageList[c.data?.currentStandImage])?.data?.url
+      const chitImageUrl = mediaListState.list.find(m => m.key === c.data?.chitImageList[c.data?.currentChitImage])?.data?.url
+      const standImageUrl = mediaListState.list.find(m => m.key === c.data?.standImageList[c.data?.currentStandImage])?.data?.url
       const styleObj = {
         '--color': c.data?.color,
         '--chit-image': chitImageUrl ? `url('${chitImageUrl}')` : '',

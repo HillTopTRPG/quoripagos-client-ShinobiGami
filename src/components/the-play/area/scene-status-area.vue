@@ -18,8 +18,8 @@ export default defineComponent({
   name: 'scene-status-area',
   components: { RoundSelect, BattleFieldSelect, CycleSelect },
   setup() {
-    const scenarioStore = ScenarioStore.injector()
-    const limit = computed(() => scenarioStore.currentScenario.sheetInfo.base.limit)
+    const scenarioState = ScenarioStore.injector()
+    const limit = computed(() => scenarioState.currentScenario.sheetInfo.base.limit)
     const cycle = ref(0)
     const round = ref(0)
     const battleField = ref(0)

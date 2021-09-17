@@ -76,7 +76,7 @@ export default makeStore<Store>('chat-list-store', () => {
     requestData,
     insertData: async (...list: ChatStore[]) => {
       console.log(JSON.stringify(list, null, '  '))
-      await insertData(...list)
+      await insertData(...list.map(c => ({ owner: null, ownerType: null, data: c })))
     },
     diceRoll: async (command: string): Promise<BcdiceDiceRollResult> => {
       const baseUrl = 'https://bcdice.onlinesession.app'

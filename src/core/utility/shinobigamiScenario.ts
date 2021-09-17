@@ -1,4 +1,5 @@
 import { getJsonByGet, getJsonByJsonp } from '@/core/utility/Utility'
+import { CharacterBase } from '@/feature/character/data'
 
 export type PC = {
   intro: string;
@@ -9,8 +10,10 @@ export type PC = {
   openList: string[];
 }
 
-export type NPC = PC & {
+export type NPC = PC & CharacterBase & {
   secretcheck: boolean;
+  url: string;
+  sheetOpenList: string[];
 }
 
 export type Prize = {

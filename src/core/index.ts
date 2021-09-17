@@ -28,12 +28,12 @@ declare type ComponentPublicInstanceConstructor<T extends ComponentPublicInstanc
 
 export function installFeatures (
   app: App,
-  features: { data: MadeStore<unknown>, pane?: ComponentPublicInstanceConstructor }[]
+  features: { data: MadeStore<unknown>, pane?: ComponentPublicInstanceConstructor }[][]
 ): void {
-  features.forEach(f => {
+  features.forEach(list => list.forEach(f => {
     if (f.pane) app.component(f.pane.name, f.pane)
-  })
-  const featureStores = features.map(f => f.data)
+  }))
+  const featureStores = features.map(list => list.map(f => f.data))
 
   app.config.globalProperties.$featureStores = featureStores
   app.provide('$featureStores', featureStores)

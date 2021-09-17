@@ -41,6 +41,8 @@ export default makeStore<Store>('persona-store', () => {
       return state.list
     },
     requestData,
-    insertData
+    insertData: async (...list) => {
+      await insertData(...list.map(p => ({ data: p })))
+    }
   }
 })

@@ -16,7 +16,7 @@ export default defineComponent({
   components: { TheLogin },
   props: {
     modules: {
-      type: Array as PropType<MadeStore<{ ready: boolean }>[]>,
+      type: Array as PropType<MadeStore<{ ready: boolean }>[][]>,
       required: true
     }
   },

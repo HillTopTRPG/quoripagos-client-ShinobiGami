@@ -1,5 +1,4 @@
 ##[ Quoripagosアプリケーションサーバ ]#############################################
-# ----- 変更時の選択肢を１つしか用意しない場合
 # quoripagosServer: "http://192.168.11.5:8000"
 quoripagosServer: "wss://quori-dev.onlinesession.app"
 
@@ -9,12 +8,3 @@ socketTimeout: 50000
 ##[ BCDice-API ]################################################################
 # 向き先（末尾のスラッシュはなし）
 bcdiceServer: "https://bcdice.onlinesession.app"
-
-##[ SkyWay ]####################################################################
-# SkyWayのAPIキー
-skywayApiKey: "********-****-****-****-************"
-
-# SkyWay接続方式
-# "Mesh": 公式サーバー向け。SkyWayの無料利用枠をあまり消費しない代わりに少人数（10名未満）でないと重くなる
-# "SFU": 個人サーバー向け。SkyWayの無料利用枠を急速に消費する代わりに大人数での通信が可能。
-skywayConnectType: "Mesh"

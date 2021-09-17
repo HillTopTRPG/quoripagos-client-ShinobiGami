@@ -3,48 +3,64 @@
     <details open>
       <summary>編集</summary>
       <div class="h-box">
-        <template v-for="c in characterList" :key="c.key">
-          <div
-            class="character"
-            :style="c.styleObj"
-            @click="onSelectEditCharacter(c.key)"
-          ><span>{{ c.data.sheetInfo.characterName }}</span></div>
+        <template v-for="(n, idx) in npcList" :key="idx">
+          <character-chit-name type="NPC" :character="n" :view-name="true" :name="n.name" @select="onSelectEditCharacter(n.name)" />
         </template>
-        <template v-if="selectCharacterKey">
-          <label>入力内容はリアルタイムで反映されます（画像はアップロードボタンで反映）</label>
-          <character-form mode="update" :character="characterList.find(c => c.key === selectCharacterKey)?.data" />
+        <template v-for="c in characterList" :key="c.key">
+          <character-chit-name type="PC" :character="c.data" :view-name="true" :name="c.data.sheetInfo.characterName" @select="onSelectEditCharacter(c.key)" />
+        </template>
+        <template v-if="editCharacter">
+          <character-form
+            mode="update"
+            :character="editCharacter"
+            :character-key="editCharacterKey"
+            v-if="editCharacter"
+            v-model:url="editCharacter.sheetInfo.url"
+            v-model:sheet-view-pass="editCharacter.sheetViewPass"
+          />
         </template>
       </div>
     </details>
-    <details open>
+    <details>
       <summary>追加</summary>
       <div class="h-box">
-        <character-form mode="insert" :character="character" @insert="insertCharacter" />
+        <character-form
+          mode="insert"
+          :character="character"
+          :character-key="''"
+          v-model:url="character.sheetInfo.url"
+          v-model:sheet-view-pass="character.sheetViewPass"
+          @insert="insertCharacter"
+        />
       </div>
     </details>
   </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, reactive, ref } from 'vue'
-import Store, { Character, ImageInfo } from './data'
+import { computed, defineComponent, reactive, ref, watch } from 'vue'
+import Store, { Character, CharacterBase, ImageInfo } from './data'
 import UserSettingStore from '@/feature/user-setting/data'
+import ScenarioStore from '@/feature/scenario/data'
 import SkillTable from '@/components/shinobi-gami/skill-table.vue'
 import { removeFilter } from '@/core/utility/typescript'
 import CharacterForm from '@/feature/character/character-form.vue'
+import MediaListStore from '@/feature/media-list/data'
+import CharacterChitName from '@/feature/character/character-chit-name.vue'
 
 export default defineComponent({
   name: 'character-pane',
   emits: ['close'],
-  components: { CharacterForm },
+  components: { CharacterChitName, CharacterForm },
   setup(_, { emit }) {
-    const userSettingStore = UserSettingStore.injector()
-    const userSetting = computed(() => userSettingStore.userSetting)
+    const userSettingState = UserSettingStore.injector()
+    const scenarioState = ScenarioStore.injector()
+    const userSetting = computed(() => userSettingState.userSetting)
+    const mediaListState = MediaListStore.injector()
 
     const state = Store.injector()
 
     const character = reactive<Character>({
-      pcNo: null,
       isActed: false,
       plot: -2,
       type: 'character',
@@ -110,9 +126,48 @@ export default defineComponent({
       selectCharacterKey.value = characterKey
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getStyleObj = (c: CharacterBase | undefined): any => {
+      if (!c || !c.chitImageList || !c.standImageList) return null
+      const chitImageUrl = mediaListState.list.find(m => m.key === c.chitImageList[c.currentChitImage])?.data?.url
+      const standImageUrl = mediaListState.list.find(m => m.key === c.standImageList[c.currentStandImage])?.data?.url
+      return {
+        '--color': c.color,
+        '--chit-image': chitImageUrl ? `url('${chitImageUrl}')` : '',
+        '--stand-image': standImageUrl ? `url('${standImageUrl}')` : ''
+      }
+    }
+
+    const editCharacterType = ref<null | 'character' | 'npc'>(null)
+    const editCharacter = ref<null | CharacterBase>(null)
+    const editCharacterKey = ref<null | string>(null)
+    watch(selectCharacterKey, () => {
+      const npc = scenarioState.currentScenario.sheetInfo.npc.find(n => n.sheetInfo?.characterName === selectCharacterKey.value)
+      if (npc) {
+        editCharacterType.value = 'npc'
+        editCharacter.value = npc
+        editCharacterKey.value = npc.name
+        return
+      }
+      const character = state.characterList.find(c => c.key === selectCharacterKey.value)
+      if (character && character.data) {
+        editCharacterType.value = 'character'
+        editCharacter.value = character.data
+        editCharacterKey.value = character.key
+        return
+      }
+      editCharacterType.value = null
+      editCharacter.value = null
+    }, { deep: true, immediate: true })
+
     return {
+      editCharacterType,
+      editCharacter,
+      editCharacterKey,
+      getStyleObj,
       selectCharacterKey,
       onSelectEditCharacter,
+      npcList: computed(() => scenarioState.currentScenario.sheetInfo.npc),
       characterList: state.makeWrapCharacterList(),
       userSetting,
       character,
@@ -157,28 +212,5 @@ details {
 .h-box {
   @include common.flex-box(row, flex-start, flex-start, wrap);
   gap: 0.5rem
-}
-.character {
-  width: 5em;
-  height: 7em;
-  font-size: 80%;
-  overflow: hidden;
-  position: relative;
-  @include common.flex-box(row, center, center);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center top;
-  background-image: var(--chit-image);
-
-  span {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 2em;
-    @include common.flex-box(row, center, center);
-    color: var(--color);
-    font-weight: bold;
-  }
 }
 </style>

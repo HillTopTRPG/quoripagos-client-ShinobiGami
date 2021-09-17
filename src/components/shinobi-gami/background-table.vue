@@ -1,5 +1,5 @@
 <template>
-  <table class="background">
+  <table class="background" :class="isRawViewMode ? 'raw-view' : ''">
     <thead>
       <tr>
         <th class="name">名称</th>
@@ -9,49 +9,72 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="(bg, ind) in character.sheetInfo.backgroundList" :key="ind">
-        <td class="name"><span><input type="text" v-model="bg.name"></span></td>
+      <tr v-for="(bg, ind) in sheetInfo.backgroundList" :key="ind">
+        <td class="name"><span>
+          <template v-if="isRawViewMode">{{ bg.name }}</template>
+          <input v-else type="text" v-model="bg.name">
+        </span></td>
         <td class="type">
           <span>
-            <select v-model="bg.type">
+            <template v-if="isRawViewMode">{{ bg.type }}</template>
+            <select v-model="bg.type" v-else>
               <option value="長所">長所</option>
               <option value="弱点">弱点</option>
             </select>
           </span>
         </td>
-        <td class="point"><span><input type="text" v-model="bg.point"></span></td>
+        <td class="point"><span>
+          <template v-if="isRawViewMode">{{ bg.point }}</template>
+          <input type="text" v-model="bg.point" v-else>
+        </span></td>
         <td class="effect">
-          <textarea v-model="bg.effect"></textarea>
+          <template v-if="isRawViewMode">{{ bg.effect }}</template>
+          <textarea v-model="bg.effect" v-else></textarea>
         </td>
       </tr>
     </tbody>
-    <tfoot>
-    <tr>
-      <td colspan="4">
-        <button @click="addBackground()">追加</button>
-      </td>
-    </tr>
+    <tfoot v-if="!isRawViewMode">
+      <tr>
+        <td colspan="4">
+          <button @click="addBackground()">追加</button>
+        </td>
+      </tr>
     </tfoot>
   </table>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue'
-import { Character } from '@/feature/character/data'
-import { ShinobigamiHelper } from '@/core/utility/shinobigami'
+import { computed, defineComponent, PropType } from 'vue'
+import { ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
+import UserStore from '@/core/data/user'
 
 export default defineComponent({
   name: 'background-table',
   props: {
-    character: {
-      type: Object as PropType<Character>,
+    mode: {
+      type: String as PropType<'update' | 'insert'>,
+      require: true
+    },
+    sheetInfo: {
+      type: Object as PropType<ShinobiGami>,
+      required: true
+    },
+    characterKey: {
+      type: String,
+      required: true
+    },
+    url: {
+      type: String,
+      required: true
+    },
+    sheetViewPass: {
+      type: String,
       required: true
     }
   },
   setup(props) {
-    console.log(props.character)
     const reloadBackground = async () => {
-      const helper = new ShinobigamiHelper(props.character.sheetInfo.url, props.character.sheetViewPass)
+      const helper = new ShinobigamiHelper(props.url, props.sheetViewPass)
       if (!helper.isThis()) {
         console.log('is not this')
         return
@@ -60,12 +83,12 @@ export default defineComponent({
       console.log(jsons)
       console.log(rd)
       if (!rd) return
-      const backgroundList = props.character.sheetInfo.backgroundList
-      backgroundList.splice(0, props.character.sheetInfo.backgroundList.length, ...rd.backgroundList)
+      const backgroundList = props.sheetInfo.backgroundList
+      backgroundList.splice(0, backgroundList.length, ...rd.backgroundList)
     }
 
     const addBackground = () => {
-      const backgroundList = props.character.sheetInfo.backgroundList
+      const backgroundList = props.sheetInfo.backgroundList
       backgroundList.push({
         name: '',
         type: '長所',
@@ -74,7 +97,13 @@ export default defineComponent({
       })
     }
 
+    const userState = UserStore.injector()
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
+    const isRawViewMode = computed(() => props.mode !== 'insert' && !isGm.value && !isOwn.value)
+
     return {
+      isRawViewMode,
       reloadBackground,
       addBackground
     }
@@ -89,7 +118,17 @@ table.background {
   border-collapse: collapse;
   border-spacing: 0;
   table-layout: fixed;
-  font-size: var(--background-table-font-size);
+  font-size: var(--sheet-font-size);
+
+  &.raw-view {
+    label {
+      cursor: default;
+    }
+
+    tbody tr {
+      cursor: default;
+    }
+  }
 
   label {
     cursor: pointer;

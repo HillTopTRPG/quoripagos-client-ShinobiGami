@@ -1,5 +1,5 @@
 <template>
-  <table class="ninja-tools">
+  <table class="ninja-tools" :class="isRawViewMode ? 'raw-view' : ''">
     <thead>
       <tr>
         <th class="name">名称</th>
@@ -8,39 +8,76 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="(t, ind) in character.sheetInfo.ninjaToolList" :key="ind">
-        <td class="name"><span><input type="text" v-model="t.name"></span></td>
-        <td class="count"><span><input type="number" v-model="t.count"></span></td>
+      <tr v-for="(t, ind) in sheetInfo.ninjaToolList" :key="ind">
+        <td class="name"><span>
+          <template v-if="isRawViewMode">{{ t.name }}</template>
+          <input type="text" v-model="t.name" v-else>
+        </span></td>
+        <td class="count"><span>
+          <template v-if="isRawViewMode">{{ t.count }}</template>
+          <input type="number" v-model="t.count" v-else>
+        </span></td>
         <td class="effect">
-          <textarea v-model="t.effect"></textarea>
+          <template v-if="isRawViewMode">{{ t.effect }}</template>
+          <textarea v-model="t.effect" v-else></textarea>
         </td>
       </tr>
     </tbody>
-    <tfoot>
-    <tr>
-      <td colspan="4">
-        <button @click="addNinjaTool()">追加</button>
-      </td>
-    </tr>
+    <tfoot v-if="!isRawViewMode">
+      <tr>
+        <td colspan="4">
+          <button @click="addNinjaTool()">追加</button>
+        </td>
+      </tr>
     </tfoot>
   </table>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue'
-import { Character } from '@/feature/character/data'
+import { computed, defineComponent, PropType } from 'vue'
+import { ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
+import UserStore from '@/core/data/user'
 
 export default defineComponent({
   name: 'ninja-tool-table',
   props: {
-    character: {
-      type: Object as PropType<Character>,
+    sheetInfo: {
+      type: Object as PropType<ShinobiGami>,
+      required: true
+    },
+    mode: {
+      type: String as PropType<'normal' | 'view' | 'update' | 'insert'>,
+      require: true
+    },
+    characterKey: {
+      type: String,
+      required: true
+    },
+    url: {
+      type: String,
+      required: true
+    },
+    sheetViewPass: {
+      type: String,
       required: true
     }
   },
   setup(props) {
+    const reloadNinjaTool = async () => {
+      const helper = new ShinobigamiHelper(props.url, props.sheetViewPass)
+      if (!helper.isThis()) {
+        console.log('is not this')
+        return
+      }
+      const { data: rd, jsons } = await helper.getData()
+      console.log(jsons)
+      console.log(rd)
+      if (!rd) return
+      const ninjaToolList = props.sheetInfo.ninjaToolList
+      ninjaToolList.splice(0, ninjaToolList.length, ...rd.ninjaToolList)
+    }
     const addNinjaTool = () => {
-      const ninjaToolList = props.character.sheetInfo.ninjaToolList
+      const ninjaToolList = props.sheetInfo.ninjaToolList
       ninjaToolList.push({
         name: '',
         count: 0,
@@ -48,7 +85,14 @@ export default defineComponent({
       })
     }
 
+    const userState = UserStore.injector()
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
+    const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
+
     return {
+      isRawViewMode,
+      reloadNinjaTool,
       addNinjaTool
     }
   }
@@ -62,7 +106,17 @@ table.ninja-tools {
   border-collapse: collapse;
   border-spacing: 0;
   table-layout: fixed;
-  font-size: var(--ninja-tool-table-font-size);
+  font-size: var(--sheet-font-size);
+
+  &.raw-view {
+    label {
+      cursor: default;
+    }
+
+    tbody tr {
+      cursor: default;
+    }
+  }
 
   label {
     cursor: pointer;

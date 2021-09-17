@@ -8,11 +8,24 @@
     <div class="field">
       <template v-for="c in characterList" :key="c.key">
         <transition name="character-fade">
-          <div
-            class="character"
-            :style="c.styleObj"
+          <character-chit-name
+            type="PC"
+            :character="c.data"
+            :name="c.data.sheetInfo.characterName"
+            :view-name="false"
             v-if="c.data && c.data.plot === ind && !c.data.isFumble"
-          ></div>
+          />
+        </transition>
+      </template>
+      <template v-for="(n, idx) in npcList" :key="`${idx}-${n.name}`">
+        <transition name="character-fade">
+          <character-chit-name
+            type="PC"
+            :character="n"
+            :view-name="false"
+            :name="n.sheetInfo ? n.sheetInfo.characterName : n.name"
+            v-if="n && n.plot === ind && !n.isFumble && (isGm || !n.secretcheck)"
+          />
         </transition>
       </template>
       <span class="n">{{ ind }}</span>
@@ -20,11 +33,24 @@
     <div class="fumble">
       <template v-for="c in characterList" :key="c.key">
         <transition name="character-fade">
-          <div
-            class="character"
-            :style="c.styleObj"
+          <character-chit-name
+            type="PC"
+            :character="c.data"
+            :name="c.data.sheetInfo.characterName"
+            :view-name="false"
             v-if="c.data && c.data.plot === ind && c.data.isFumble"
-          ></div>
+          />
+        </transition>
+      </template>
+      <template v-for="(n, idx) in npcList" :key="`${idx}-${n.name}`">
+        <transition name="character-fade">
+          <character-chit-name
+            type="NPC"
+            :character="n"
+            :view-name="false"
+            :name="n.sheetInfo ? n.sheetInfo.characterName : n.name"
+            v-if="n && n.plot === ind && n.isFumble && (isGm || !n.secretcheck)"
+          />
         </transition>
       </template>
     </div>
@@ -32,17 +58,21 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive } from 'vue'
+import { computed, defineComponent, reactive } from 'vue'
 import CharacterStore from '@/feature/character/data'
+import ScenarioStore from '@/feature/scenario/data'
+import UserStore from '@/core/data/user'
+import CharacterChitName from '@/feature/character/character-chit-name.vue'
 
 type VelocityColumn = { k: string; a: string; e: string }
 type Velocity = VelocityColumn[]
 
 export default defineComponent({
   name: 'velocity-column',
+  components: { CharacterChitName },
   emits: ['update:modelValue'],
   setup() {
-    const characterStore = CharacterStore.injector()
+    const characterState = CharacterStore.injector()
     const velocity = reactive<Velocity>([
       { k: '零', a: '静止した時間', e: 'Mundain' },
       { k: '壱', a: '幽霊歩き', e: 'Ghost Walk' },
@@ -53,9 +83,17 @@ export default defineComponent({
       { k: '陸', a: '光速', e: 'Light Speed' },
       { k: '死地', a: '超光速', e: 'F.T.L.' }
     ])
+
+    const scenarioState = ScenarioStore.injector()
+    const npcList = computed(() => scenarioState.currentScenario.sheetInfo.npc)
+    const userState = UserStore.injector()
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+
     return {
+      characterList: characterState.makeWrapCharacterList(),
       velocity,
-      characterList: characterStore.makeWrapCharacterList()
+      npcList,
+      isGm
     }
   }
 })
@@ -77,30 +115,9 @@ export default defineComponent({
   box-sizing: border-box;
   min-width: 3em;
 
-  .character {
-    width: calc(100% - 6px);
-    font-size: 80%;
-    overflow: hidden;
-    position: relative;
-    margin: 3px 3px 0 3px;
-    @include common.flex-box(row, center, center);
-    border-color: var(--color);
-    border-width: 3px;
-    border-style: solid;
-    box-sizing: border-box;
-    background-image: var(--chit-image);
-    background-repeat: no-repeat;
-    background-position: center center;
-    background-size: contain;
-
+  > * {
     &:last-child {
       margin-bottom: 3px;
-    }
-
-    &:before {
-      content: '';
-      display: block;
-      padding-top: 100%;
     }
   }
 
@@ -116,7 +133,7 @@ export default defineComponent({
   }
 
   .label {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.5);
     @include common.flex-box(column, null, flex-srart);
     box-sizing: border-box;
     height: 4em;
@@ -143,7 +160,7 @@ export default defineComponent({
   }
   .field {
     position: relative;
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.5);
     box-sizing: border-box;
     min-height: 5em;
     @include common.flex-box(column);
@@ -152,22 +169,26 @@ export default defineComponent({
     border-color: black;
     border-width: 0 1px 1px 1px;
     margin-bottom: 5px;
-    padding-bottom: 2em;
+    gap: 0.3rem;
+    padding: 0.3rem 0.3rem 2em;
 
     .n {
       position: absolute;
       @include common.flex-box(column, null, center);
       bottom: 0;
+      left: 0;
       width: 100%;
       height: 2em;
       font-weight: bold;
     }
   }
   .fumble {
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(0, 0, 0, 0.5);
     box-sizing: border-box;
     min-height: 5em;
     border: 1px solid black;
+    gap: 0.3rem;
+    padding: 0.3rem;
   }
 }
 </style>

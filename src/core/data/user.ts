@@ -57,7 +57,7 @@ type Store = {
   loginUser: (userName: string, userType: UserType, userPassword: string) => Promise<void>;
 }
 
-export default makeStore<Store>('userStore', () => {
+export default makeStore<Store>('user-store', () => {
   const state = reactive<StoreUpdateProperties<Store, 'selfUser'>>({
     userList: [],
     selectedRoomNo: 0,
@@ -72,6 +72,8 @@ export default makeStore<Store>('userStore', () => {
       console.error(err)
       return
     }
+    // console.log('notify-user-update')
+    // console.log(JSON.stringify(payload, null, '  '))
     const index = state.userList.findIndex(r => r.name === payload.name)
     if (index < 0) {
       state.userList.push(payload)

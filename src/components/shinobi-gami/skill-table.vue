@@ -1,6 +1,6 @@
 <template>
-  <table class="skill-table" :class="[mode === 'comparison' ? 'ignore-input' : '', operationType]">
-    <caption v-if="mode !== 'edit'">
+  <table class="skill-table" :class="[isRawViewMode ? 'raw-view' : '', operationType]">
+    <caption v-if="mode !== 'update' && mode !== 'insert'">
       <template v-if="mode === 'comparison'">
         <div>
           <select v-model="otherCharaKey">
@@ -27,9 +27,15 @@
           <th :class="`gap-${col}`">
             <label>
               <input
-                :disabled="mode === 'comparison'"
                 type="checkbox"
                 :checked="skill?.spaceList.some(n => n === col)"
+                v-if="isRawViewMode"
+                @click.prevent
+              >
+              <input
+                type="checkbox"
+                :checked="skill?.spaceList.some(n => n === col)"
+                v-else
                 @change="onChangeGapHead($event, col)"
               >
               {{s[0]}}
@@ -39,9 +45,15 @@
             <label>
               {{s[1]}}
               <input
-                :disabled="mode === 'comparison'"
                 type="checkbox"
                 :checked="skill?.damagedColList.some(n => n === col)"
+                v-if="isRawViewMode"
+                @click.prevent
+              >
+              <input
+                type="checkbox"
+                :checked="skill?.damagedColList.some(n => n === col)"
+                v-else
                 @change="onChangeDamageHead($event, col)"
               >
             </label>
@@ -77,7 +89,20 @@
     <tfoot v-if="skill">
       <tr>
         <td class="out-row" colspan="13" :class="skill?.outRow ? 'fill' : ''">
-          <label><input :disabled="mode === 'comparison'" type="checkbox" :checked="skill?.outRow" @change="onChangeOutRow($event)"></label>
+          <label>
+            <input
+              type="checkbox"
+              :checked="skill?.outRow"
+              v-if="isRawViewMode"
+              @click.prevent
+            >
+            <input
+              type="checkbox"
+              :checked="skill?.outRow"
+              v-else
+              @change="onChangeOutRow($event)"
+            >
+          </label>
         </td>
       </tr>
     </tfoot>
@@ -85,25 +110,26 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, watch, ref, reactive, PropType } from 'vue'
-import { SkillTable } from '@/core/utility/shinobigami'
+import { defineComponent, watch, ref, reactive, PropType, computed } from 'vue'
+import { ShinobiGami, SkillTable } from '@/core/utility/shinobigami'
 import { listDelete } from '@/core/utility/PrimaryDataUtility'
 import { HtmlEvent } from '@/core/utility/typescript'
 import { SaikoroFictionTokugi } from '@/core/utility/SaikoroFiction'
-import CharacterStore, { Character } from '@/feature/character/data'
+import CharacterStore from '@/feature/character/data'
 import SpecialInputStore from '@/feature/special-input/data'
 import { makeComputedObject } from '@/core/utility/vue3'
 import { calcTargetValue, getRowCol } from '@/core/utility/TrpgSystemFasade'
+import UserStore from '@/core/data/user'
 
 export default defineComponent({
   name: 'skill-table',
   props: {
     mode: {
-      type: String as PropType<'normal' | 'comparison' | 'edit'>,
+      type: String as PropType<'normal' | 'comparison' | 'update' | 'insert'>,
       require: true
     },
-    character: {
-      type: Object as PropType<Character>,
+    sheetInfo: {
+      type: Object as PropType<ShinobiGami>,
       required: true
     },
     characterKey: {
@@ -125,7 +151,7 @@ export default defineComponent({
   },
   emits: ['update:otherCharacterKey', 'update:targetSkill', 'clear-arts'],
   setup(props, { emit }) {
-    const specialInputStore = SpecialInputStore.injector()
+    const specialInputState = SpecialInputStore.injector()
     // 特技表
     const skill = ref<SaikoroFictionTokugi | null>(null)
     const targetNinjaArts = ref<string | null>(null)
@@ -146,16 +172,16 @@ export default defineComponent({
     })
 
     // 外部の変更を取り込む
-    const characterStore = CharacterStore.injector()
+    const characterState = CharacterStore.injector()
     const otherCharaKey = ref<string | null>(props.otherCharacterKey)
     watch(
       props.mode === 'comparison'
-        ? [() => props.character?.sheetInfo.skill, () => characterStore.characterList, otherCharaKey]
-        : () => props.character?.sheetInfo.skill,
+        ? [() => props.sheetInfo.skill, () => characterState.characterList, otherCharaKey]
+        : () => props.sheetInfo.skill,
       () => {
         skill.value = props.mode === 'comparison'
-          ? characterStore.characterList.find(c => c.key === otherCharaKey.value)?.data?.sheetInfo.skill || null
-          : props.character?.sheetInfo.skill || null
+          ? characterState.characterList.find(c => c.key === otherCharaKey.value)?.data?.sheetInfo.skill || null
+          : props.sheetInfo.skill || null
         if (props.mode === 'normal') onChangeSelectedSkill(props.targetSkill)
       },
       { immediate: true, deep: true }
@@ -197,13 +223,34 @@ export default defineComponent({
     }
 
     // 設定・判定
-    const operationType = ref<'input' | 'judge'>(props.mode === 'edit' ? 'input' : 'judge')
+    const operationType = ref<'input' | 'judge'>(props.mode === 'update' || props.mode === 'insert' ? 'input' : 'judge')
     watch(operationType, () => {
       if (operationType.value === 'input') {
         selectedSkill.value = null
       }
     })
+    const onClickTargetValue = (info: { name: string; targetValue: number; }) => {
+      specialInputState.setUseSkill(info.name)
+      specialInputState.from.key = props.characterKey
+      specialInputState.setNinjaArts(targetNinjaArts.value)
+      specialInputState.setTargetSkill(selectedSkill.value)
+      specialInputState.from.key = props.characterKey
+      specialInputState.setCmdType('SG')
+    }
+
+    const onChangeOutRow = (e: HtmlEvent<HTMLInputElement>) => {
+      if (skill.value) {
+        skill.value.outRow = e.target.checked
+      }
+    }
+
+    const userState = UserStore.injector()
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
+    const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
+
     const onClickSkillName = (name: string): void => {
+      if (isRawViewMode.value) return
       if (!skill.value) return
       const { r, c } = getRowCol(name)
       if (r === -1 || c === -1) return
@@ -216,28 +263,17 @@ export default defineComponent({
       }
       if (targetNinjaArts.value) emit('clear-arts')
     }
-    const onClickTargetValue = (info: { name: string; targetValue: number; }) => {
-      specialInputStore.setUseSkill(info.name)
-      specialInputStore.from.key = props.characterKey
-      specialInputStore.setNinjaArts(targetNinjaArts.value)
-      specialInputStore.setTargetSkill(selectedSkill.value)
-      specialInputStore.from.key = props.characterKey
-      specialInputStore.setCmdType('SG')
-    }
-
-    const onChangeOutRow = (e: HtmlEvent<HTMLInputElement>) => {
-      if (skill.value) {
-        skill.value.outRow = e.target.checked
-      }
-    }
 
     return {
+      isRawViewMode,
+      isGm,
+      isOwn,
       otherCharaKey,
       targetValueList,
       selectedSkill,
       skill,
       operationType,
-      ...makeComputedObject(characterStore),
+      ...makeComputedObject(characterState),
       skillColumnList: [['　', '器術'], ['A', '体術'], ['B', '忍術'], ['C', '謀術'], ['D', '戦術'], ['E', '妖術']],
       SkillTable,
       onChangeGapHead,
@@ -254,25 +290,19 @@ export default defineComponent({
 @use "../common";
 
 table.skill-table {
-  font-size: var(--skill-table-font-size);
+  font-size: var(--sheet-font-size);
   border-collapse: collapse;
   border-spacing: 0;
   border: 1px solid rgb(0, 0, 0);
   //border-top: 1px solid rgb(0, 0, 0);
   table-layout: fixed;
 
-  &.input td[class^="skill-"] {
+  &:not(.raw-view).input td[class^="skill-"] {
     background-color: rgba(200, 255, 255, 0.7);
   }
 
-  &.ignore-input {
-    caption label {
-      cursor: default;
-    }
-    thead label {
-      cursor: default;
-    }
-    tfoot label {
+  &.raw-view {
+    label {
       cursor: default;
     }
   }

@@ -1,7 +1,7 @@
 <template>
   <div class="skill-table-set">
     <skill-table
-      :character="character"
+      :sheet-info="character.sheetInfo"
       @clearArts="onClearArts()"
       :target-arts="targetArts"
       :character-key="characterKey"
@@ -9,7 +9,7 @@
       v-model:target-skill="targetSkillRaw"
     />
     <skill-table
-      :character="character"
+      :sheet-info="character.sheetInfo"
       :character-key="characterKey"
       mode="comparison"
       v-model:other-character-key="otherCharaKey"

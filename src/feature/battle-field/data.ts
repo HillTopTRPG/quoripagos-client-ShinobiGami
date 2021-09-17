@@ -41,6 +41,8 @@ export default makeStore<Store>('battle-field-store', () => {
       return state.list
     },
     requestData,
-    insertData
+    insertData: async (...list) => {
+      await insertData(...list.map(b => ({ owner: null, ownerType: null, data: b })))
+    }
   }
 })

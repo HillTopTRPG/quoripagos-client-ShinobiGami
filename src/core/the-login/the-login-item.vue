@@ -122,11 +122,11 @@ export default defineComponent({
       showDeleteMessage.value = status === 'none'
     })
 
-    const userStoreInjectObj = UserStore.injector()
+    const userState = UserStore.injector()
 
-    watch([() => userStoreInjectObj.lastRoomLoginType, () => userStoreInjectObj.selectedRoomNo], () => {
-      if (userStoreInjectObj.selectedRoomNo !== props.r.roomNo) return
-      const type = userStoreInjectObj.lastRoomLoginType
+    watch([() => userState.lastRoomLoginType, () => userState.selectedRoomNo], () => {
+      if (userState.selectedRoomNo !== props.r.roomNo) return
+      const type = userState.lastRoomLoginType
       if (type === '') {
         setTimeout(() => {
           userTypeSelectElm.value?.focus()
@@ -155,7 +155,7 @@ export default defineComponent({
       roomPasswordInputElm,
       userNameInputElm,
       userPasswordInputElm,
-      ...makeComputedObject(userStoreInjectObj),
+      ...makeComputedObject(userState),
       roomName,
       userName,
       roomPassword,

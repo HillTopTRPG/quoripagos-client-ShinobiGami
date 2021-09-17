@@ -78,31 +78,31 @@ export default defineComponent({
   name: 'special-input-area',
   emits: ['close', 'submit'],
   setup(props, { emit }) {
-    const specialInputStore = SpecialInputStore.injector()
-    const specialInputStoreWrap = makeComputedObject(specialInputStore)
-    const characterStore = CharacterStore.injector()
-    const userStore = UserStore.injector()
+    const specialInputState = SpecialInputStore.injector()
+    const specialInputStateWrap = makeComputedObject(specialInputState)
+    const characterState = CharacterStore.injector()
+    const userState = UserStore.injector()
 
     const characterList = computed(() => {
-      const owner = specialInputStore.from.key
-      return characterStore.characterList
-        .filter(c => userStore.selfUser?.type === 'gm' || c.owner === userStore.selfUser?.key)
+      const owner = specialInputState.from.key
+      return characterState.characterList
+        .filter(c => userState.selfUser?.type === 'gm' || c.owner === userState.selfUser?.key)
         .sort((c1, c2) => {
           if (c1.key === owner) return -1
           if (c2.key === owner) return 1
-          if (c1.owner === userStore.selfUser?.key) return -1
-          if (c2.owner === userStore.selfUser?.key) return 1
+          if (c1.owner === userState.selfUser?.key) return -1
+          if (c2.owner === userState.selfUser?.key) return 1
           return 0
         })
     })
 
-    const fromKey = ref<string | null>(specialInputStore.from.key)
-    watch(() => specialInputStore.from.key, () => {
-      fromKey.value = specialInputStore.from.key
+    const fromKey = ref<string | null>(specialInputState.from.key)
+    watch(() => specialInputState.from.key, () => {
+      fromKey.value = specialInputState.from.key
     })
     watch(fromKey, () => {
-      specialInputStore.from = {
-        type: fromKey.value === userStore.selfUser?.name ? 'user' : 'character',
+      specialInputState.from = {
+        type: fromKey.value === userState.selfUser?.name ? 'user' : 'character',
         key: fromKey.value
       }
     })
@@ -128,10 +128,10 @@ export default defineComponent({
     // 目標値計算結果
     const targetValueList = ref<TargetValueCalcResult[]>([])
     watch([
-      () => specialInputStore.targetSkill,
+      () => specialInputState.targetSkill,
       () => characterRef.value?.sheetInfo.skill
     ], () => {
-      const targetSkill = specialInputStore.targetSkill
+      const targetSkill = specialInputState.targetSkill
       const tokugi = characterRef.value?.sheetInfo.skill
       if (targetSkill && tokugi) {
         targetValueList.value.splice(0, targetValueList.value.length, ...calcTargetValue(targetSkill, tokugi))
@@ -140,24 +140,24 @@ export default defineComponent({
       }
     }, { deep: true })
 
-    const toKey = ref<string | null>(specialInputStore.to?.key || null)
+    const toKey = ref<string | null>(specialInputState.to?.key || null)
     watchEffect(() => {
-      specialInputStore.to = toKey.value ? {
+      specialInputState.to = toKey.value ? {
         type: 'character',
         key: toKey.value
       } : null
     })
 
-    const cmdTypeRaw = ref<SpecialInputType>(specialInputStore.cmdType)
-    watch(() => specialInputStore.cmdType, () => {
-      cmdTypeRaw.value = specialInputStore.cmdType
+    const cmdTypeRaw = ref<SpecialInputType>(specialInputState.cmdType)
+    watch(() => specialInputState.cmdType, () => {
+      cmdTypeRaw.value = specialInputState.cmdType
     })
     watch(cmdTypeRaw, () => {
-      specialInputStore.setCmdType(cmdTypeRaw.value)
+      specialInputState.setCmdType(cmdTypeRaw.value)
     })
 
     const close = () => {
-      specialInputStore.setCmdType('normal')
+      specialInputState.setCmdType('normal')
     }
 
     const onSubmit = () => {
@@ -172,7 +172,7 @@ export default defineComponent({
       toKey,
       characterList,
       ninjaArtsList,
-      ...specialInputStoreWrap,
+      ...specialInputStateWrap,
       close,
       SkillTable,
       skillColumnList: ['器術', '体術', '忍術', '謀術', '戦術', '妖術'],

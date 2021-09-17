@@ -12,26 +12,22 @@
         <div
           class="view-text first"
           @click="onEndDiceRoll()"
-          :style="{
-            '--color': chatHistoryList[0].viewTextInfo?.color,
-            '--image': chatHistoryList[0].viewTextInfo?.standImage,
-            '--offset': 0
-          }"
+          :style="{...getChatStyle(chatHistoryList[0].viewTextInfo), '--offset': 0, '--image': chatHistoryList[0].viewTextInfo?.standImage}"
           v-if="chatHistoryList[0].viewTextInfo"
         >
-          <span>{{ chatHistoryList[0].viewTextInfo?.from }}{{ chatHistoryList[0].viewTextInfo?.text }}</span>
+          <span>{{ getFromLabel(chatHistoryList[0].viewTextInfo || null) }}{{ chatHistoryList[0].viewTextInfo?.text }}</span>
           <div class="h-box">
             <span class="dice-roll-scf" v-if="chatHistoryList[0].viewTextInfo?.diceRollResult">{{ chatHistoryList[0].viewTextInfo?.diceRollResult }}</span>
             <span>{{ chatHistoryList[0].viewTextInfo?.diceText }}</span>
           </div>
         </div>
-        <div class="img" :style="{ '--image': chatHistoryList[0].viewTextInfo.standImage }" v-if="chatHistoryList[0].viewTextInfo.standImage">
+        <div class="img" :style="{ '--image': chatHistoryList[0].viewTextInfo.standImage }" :class="!chatHistoryList[0].viewTextInfo.standImage ? 'non-image' : ''">
           <div
             v-for="(pip, idx) in chatHistoryList[0].pips"
             :key="`${chatHistoryList[0].key}-${idx}`"
             class="dice-wrap roll"
             :class="`${pip[0]}-${pip[1]}`"
-            :style="{'--offset': idx, '--dice-count': chatHistoryList[0].pips.length, '--color': chatHistoryList[0].viewTextInfo?.color}"
+            :style="{...getChatStyle(chatHistoryList[0].viewTextInfo), '--offset': idx, '--dice-count': chatHistoryList[0].pips.length}"
           >
             <div class="dice"></div>
           </div>
@@ -40,15 +36,11 @@
           <template v-for="(h, idx) in chatHistoryList" :key="h.key">
             <div
               class="view-text"
-              :style="{
-                '--color': h.viewTextInfo?.color,
-                '--image': h.viewTextInfo?.standImage,
-                '--offset': idx
-              }"
+              :style="{...getChatStyle(chatHistoryList[0].viewTextInfo), '--offset': idx, '--image': h.viewTextInfo?.standImage}"
               :class="[chatHistoryList[0].viewTextInfo.isMe ? 'image-left' : 'image-right', idx ? 'old' : 'first']"
               v-if="h.viewTextInfo && idx > 0"
             >
-              <span>{{ h.viewTextInfo?.from }}{{ h.viewTextInfo?.text }}</span>
+              <span>{{ getFromLabel(h.viewTextInfo || null) }}{{ h.viewTextInfo?.text }}</span>
               <div class="h-box">
                 <span class="dice-roll-scf" v-if="h.viewTextInfo?.diceRollResult">{{ h.viewTextInfo?.diceRollResult }}</span>
                 <span>{{ h.viewTextInfo?.diceText }}</span>
@@ -90,10 +82,32 @@
         <velocity-column />
       </template>
       <template #right-box>
+        <template v-if="isGm">
+          <template v-for="(c, idx) in npcList" :key="`${c.name}-${idx}`">
+            <character-detail-view
+              :character="c"
+              :character-key="c.name"
+              v-if="c.sheetInfo"
+              :url="c.sheetInfo.url"
+            />
+          </template>
+        </template>
         <template v-for="c in characterList" :key="c.key">
           <character-detail-view
-            :character="c"
+            :character="c.data"
+            :character-key="c.key"
+            :url="c.data?.sheetInfo.url"
           />
+        </template>
+        <template v-if="!isGm">
+          <template v-for="(c, idx) in npcList" :key="`${c.name}-${idx}`">
+            <character-detail-view
+              :character="c"
+              :character-key="c.name"
+              v-if="c.sheetInfo && !c.secretcheck && isOpen(c.sheetOpenList)"
+              :url="c.sheetInfo.url"
+            />
+          </template>
         </template>
       </template>
     </flexible-data-layout>
@@ -104,9 +118,11 @@
 import { computed, defineComponent, reactive, ref, watch } from 'vue'
 import CharacterStore from '@/feature/character/data'
 import MediaListStore from '@/feature/media-list/data'
+import SceneStore from '@/feature/scene/data'
 import ChatListStore, { BcdiceDiceRollResult, ChatStore } from '@/feature/chat-list/data'
 import UserSettingStore from '@/feature/user-setting/data'
 import UserStore from '@/core/data/user'
+import ScenarioStore from '@/feature/scenario/data'
 import { getBlock, SlotUnionInfo } from '@/core/flexible-data-layout.vue'
 import VelocityColumn from '@/components/the-play/velocity-column.vue'
 import CharacterStatusArea from '@/components/the-play/area/character-status-area.vue'
@@ -122,35 +138,39 @@ const layoutData = require('./the-play.yaml')
 export default defineComponent({
   components: { SpecialInputArea, SceneStatusArea, DramaticSceneArea, CharacterDetailView, ModalArea, CharacterStatusArea, VelocityColumn },
   setup() {
-    const characterStore = CharacterStore.injector()
-    const mediaListStore = MediaListStore.injector()
-    const specialInputStore = SpecialInputStore.injector()
-    specialInputStore.characterStore = characterStore
+    const characterState = CharacterStore.injector()
+    const mediaListState = MediaListStore.injector()
+    const specialInputState = SpecialInputStore.injector()
+    specialInputState.characterState = characterState
     const chatBottomElm = ref<HTMLElement | null>(null)
-    const userSettingStore = UserSettingStore.injector()
-    const chatListStore = ChatListStore.injector()
-    const userStore = UserStore.injector()
-    const characterList = computed(() => characterStore.characterList)
-    const selfName = computed(() => userStore.selfUser?.name || null)
+    const userSettingState = UserSettingStore.injector()
+    const chatListState = ChatListStore.injector()
+    const sceneState = SceneStore.injector()
+    const userState = UserStore.injector()
+    const scenarioState = ScenarioStore.injector()
+    const characterList = computed(() => characterState.characterList)
+    const selfName = computed(() => userState.selfUser?.name || null)
     const targetCharacterList = ref<{ name: string, key: string | null }[]>([])
-    watch([() => userStore.selfUser?.refList, () => characterStore.characterList], () => {
-      targetCharacterList.value = userStore.selfUser?.refList?.filter(r => r.type === 'character')
-        .map(r => ({ name: characterStore.characterList.find(c => c.key === r.key)?.data?.sheetInfo.characterName || '', key: r.key }))
+    watch([() => userState.selfUser?.refList, () => characterState.characterList], () => {
+      targetCharacterList.value = userState.selfUser?.refList?.filter(r => r.type === 'character')
+        .map(r => ({ name: characterState.characterList.find(c => c.key === r.key)?.data?.sheetInfo.characterName || '', key: r.key }))
         .filter(cn => cn.name) || []
     }, { deep: true, immediate: true })
 
+    const npcList = computed(() => scenarioState.currentScenario.sheetInfo.npc)
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalStyle = reactive<any>({})
-    watch(() => userSettingStore.userSetting, () => {
-      const a = userSettingStore.userSetting
+    watch(() => userSettingState.userSetting, () => {
+      const a = userSettingState.userSetting
       globalStyle['--accent1-color'] = a?.accent1Color || globalStyle['--accent1-color']
       globalStyle['--accent2-color'] = a?.accent2Color || globalStyle['--accent2-color']
       globalStyle['--font-color'] = a?.fontColor || globalStyle['--font-color']
-      globalStyle['--skill-table-font-size'] = a?.skillTableFontSize ? a?.skillTableFontSize + 'px' : '' || globalStyle['--skill-table-font-size']
-      globalStyle['--ninja-arts-table-font-size'] = a?.ninjaArtsTableFontSize ? a?.ninjaArtsTableFontSize + 'px' : '' || globalStyle['--ninja-arts-table-font-size']
-      globalStyle['--background-table-font-size'] = a?.backgroundTableFontSize ? a?.backgroundTableFontSize + 'px' : '' || globalStyle['--background-table-font-size']
-      globalStyle['--special-arts-table-font-size'] = a?.specialArtsTableFontSize ? a?.specialArtsTableFontSize + 'px' : '' || globalStyle['--special-arts-table-font-size']
-      globalStyle['--ninja-tool-table-font-size'] = a?.ninjaToolTableFontSize ? a?.ninjaToolTableFontSize + 'px' : '' || globalStyle['--ninja-tool-table-font-size']
+      globalStyle['--sheet-font-size'] = a?.sheetFontSize ? a?.sheetFontSize + 'px' : '' || globalStyle['--sheet-font-size']
+    }, { deep: true, immediate: true })
+    watch(() => sceneState.currentScene, () => {
+      const bgImageUrl = mediaListState.list.find(n => n.key === sceneState?.currentScene?.backgroundImage)?.data?.url
+      globalStyle['--background-image'] = bgImageUrl ? `url('${bgImageUrl}')` : ''
     }, { deep: true, immediate: true })
 
     const reactiveLayout = reactive<SlotUnionInfo>(layoutData)
@@ -174,7 +194,7 @@ export default defineComponent({
     const diceRollAndChat = async (cmd: string): Promise<{ insertChat: () => Promise<void>; bcdiceResult: BcdiceDiceRollResult | null }> => {
       let bcdiceResult: BcdiceDiceRollResult | null = null
       try {
-        bcdiceResult = await chatListStore.diceRoll(cmd)
+        bcdiceResult = await chatListState.diceRoll(cmd)
       } catch (_) { /**/ }
       let diceResult = ''
       if (bcdiceResult?.critical) diceResult = 'スペシャル'
@@ -185,7 +205,7 @@ export default defineComponent({
         bcdiceResult,
         insertChat: async () => {
           const diceRaw = getDiceRollResultText(bcdiceResult?.text)
-          await chatListStore.insertData({
+          await chatListState.insertData({
             raw: cmd,
             diceRaw,
             tag: [''],
@@ -206,6 +226,8 @@ export default defineComponent({
     const chatHistoryList = ref<{
       key: string;
       viewTextInfo: {
+        type: 'chat' | 'system';
+        fromType: 'character' | 'user';
         text: string;
         from: string;
         diceText: string | null;
@@ -229,25 +251,25 @@ export default defineComponent({
       if (!chat) return {}
       const result: Record<string, string> = {}
       if (chat.fromType === 'character') {
-        const c = characterStore.characterList.find(c => c.key === chat.from)
+        const c = characterState.characterList.find(c => c.key === chat.from)
         result['--color'] = c?.data?.color || '#000'
       } else {
-        result['--color'] = userSettingStore.userSetting?.fontColor || '#000'
+        result['--color'] = userSettingState.userSetting?.fontColor || '#000'
       }
       return result
     }
 
     const getFromLabel = (chat: ChatStore | null): string => {
       if (!chat) return ''
-      let fromLabel = ''
+      let fromLabel: string
       if (chat.type === 'system') {
         fromLabel = 'System'
       } else {
         if (chat.fromType === 'character') {
-          const c = characterStore.characterList.find(c => c.key === chat.from)
+          const c = characterState.characterList.find(c => c.key === chat.from)
           fromLabel = c?.data?.sheetInfo.characterName || ''
         } else {
-          const u = userStore.userList.find(u => u.name === chat.from)
+          const u = userState.userList.find(u => u.name === chat.from)
           fromLabel = `${u?.name || '???'}(${u?.type.toUpperCase() || '??'})`
         }
       }
@@ -256,24 +278,24 @@ export default defineComponent({
     }
 
     const randsToPips = (chat: ChatStore, key: string): Promise<void> => {
-      // onEndDiceRoll()
       return new Promise<void>(resolve => {
         const style = getChatStyle(chat)
-        const character = chat.fromType === 'character' ? characterStore.characterList.find(c => c.key === chat.from)?.data || null : null
+        const character = chat.fromType === 'character' ? characterState.characterList.find(c => c.key === chat.from)?.data || null : null
         const standImageKey = character?.standImageList.length && character?.standImageList.length > character?.currentStandImage ? character?.standImageList[character?.currentStandImage || 0] : null
-        const standImageUrl = mediaListStore.list.find(n => n.key === standImageKey)?.data?.url || null
+        const standImageUrl = mediaListState.list.find(n => n.key === standImageKey)?.data?.url || null
 
         chatHistoryList.value.unshift({
           key,
           viewTextInfo: {
-            from: getFromLabel(chat),
+            type: chat.type,
+            fromType: chat.fromType,
+            from: chat.from,
             text: chat.raw,
             diceText: chat.diceRaw,
             diceRollResult: chat.diceRollResult,
             color: style['--color'] || '#000',
             standImage: standImageUrl ? `url('${standImageUrl}')` : null,
-            // standImage: standImageUrl || null,
-            isMe: chat.from === selfName.value || userStore.selfUser?.refList.some(r => r.key === chat.from) || false
+            isMe: chat.from === selfName.value || userState.selfUser?.refList.some(r => r.key === chat.from) || false
           },
           pips: chat.rands
             ?.map((r): [string, number] | null => {
@@ -284,65 +306,35 @@ export default defineComponent({
             .filter((r): r is [string, number] => r !== null) || []
         })
         diceRollEnd.value = () => {
-          // if (diceRollTimeoutId.value) {
-          //   window.clearTimeout(diceRollTimeoutId.value)
-          //   diceRollTimeoutId.value = null
-          // }
           diceRollEnd.value = null
           chatHistoryList.value = []
           resolve()
         }
-        // diceRollTimeoutId.value = window.setTimeout(() => {
-        //   if (diceRollEnd.value) {
-        //     diceRollEnd.value()
-        //   }
-        // }, 80000)
       })
     }
 
     const onEnter = async () => {
       const { insertChat } = await diceRollAndChat(chatInput.value)
-      // await chatListStore.insertData({
-      //   raw: chatInput.value,
-      //   tag: [''],
-      //   tab: '',
-      //   type: 'chat',
-      //   fromType: from.value === selfName.value ? 'user' : 'character',
-      //   from: from.value || '',
-      //   diceRollResult: null,
-      //   rands: null
-      // })
       chatInput.value = ''
       await insertChat()
     }
 
     const onChangeMode = (m: 'normal' | 'SG' | 'D6' | 'D6>=?') => {
-      specialInputStore.from = {
+      specialInputState.from = {
         type: from.value === selfName.value ? 'user' : 'character',
         key: from.value
       }
-      specialInputStore.setCmdType(m)
-      // onEndDiceRoll()
+      specialInputState.setCmdType(m)
     }
 
     const onDiceCommand = async () => {
-      const command = specialInputStore.command
-      specialInputStore.setCmdType('normal')
+      const command = specialInputState.command
+      specialInputState.setCmdType('normal')
       const { insertChat } = await diceRollAndChat(command)
-      // await chatListStore.insertData({
-      //   raw: command,
-      //   tag: [''],
-      //   tab: '',
-      //   type: 'chat',
-      //   fromType: from.key === selfName.value ? 'user' : 'character',
-      //   from: from.key || '',
-      //   diceRollResult: null,
-      //   rands: null
-      // })
       await insertChat()
     }
 
-    const chatList = computed(() => chatListStore.list)
+    const chatList = computed(() => chatListState.list)
     watch(() => [...chatList.value], (newList, oldList) => {
       if (newList.length > oldList.length) {
         setTimeout(() => {
@@ -354,8 +346,11 @@ export default defineComponent({
         }
       }
     })
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
 
     return {
+      isGm,
+      npcList,
       bottomHeight,
       chatHistoryList,
       onEndDiceRoll,
@@ -372,7 +367,8 @@ export default defineComponent({
       chatList,
       onEnter,
       getFromLabel,
-      getChatStyle
+      getChatStyle,
+      isOpen: (openList: string[]) => userState.selfUser?.refList.some(r => openList.some(o => o === r.key))
     }
   },
   name: 'the-play'
@@ -572,17 +568,32 @@ textarea {
   gap: 0.5rem;
 }
 
+@include common.deep("#section-core") {
+  background-image: var(--background-image);
+  background-position: center;
+  background-size: cover;
+  background-origin: content-box;
+  background-repeat: no-repeat;
+
+  select {
+    background-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
 @include common.deep(".left-box") {
   gap: 0.5rem;
 }
 
 @include common.deep(".dramatic-scene") {
   border: 1px solid black;
+  padding: 0.3rem;
+  gap: 0.3rem;
 }
 
 @include common.deep("#section-core") {
   gap: 0.5rem 0.5rem;
 }
+
 @include common.deep("#section-scene") {
   min-width: unquote(min(calc(24em + 47px), 100%));
   max-width: unquote(min(40em, 100%));

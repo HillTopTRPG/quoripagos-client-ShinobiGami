@@ -41,6 +41,8 @@ export default makeStore<Store>('tag-store', () => {
       return state.list
     },
     requestData,
-    insertData
+    insertData: async (...list) => {
+      await insertData(...list.map(t => ({ data: t })))
+    }
   }
 })

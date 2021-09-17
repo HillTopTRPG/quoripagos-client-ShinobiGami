@@ -90,7 +90,7 @@ export default makeStore<Store>('roomStore', () => {
       d
         .replace('<', '&lt;')
         .replace('>', '&gt;')
-        .replace(/\[([^"<>\]]+)]\(([^)"<>]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+        .replace(/\[([^"<>\]]+)]\(([^)"<>]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
     )
     state.maxRoomNo = result.maxRoomNo
     state.termsOfUse = result.appServerInfo.termsOfUse

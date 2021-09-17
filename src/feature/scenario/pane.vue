@@ -168,7 +168,7 @@
             <input type="text" v-if="isGm" v-model="n.inputUrl">
             <template>{{ n.inputUrl }}</template>
           </td>
-          <td class="link"><a :href="n.inputUrl">リンク</a></td>
+          <td class="link"><a :href="n.inputUrl" target="_blank" rel="noopener noreferrer">リンク</a></td>
           <td class="note">
             <input type="text" v-if="isGm" v-model="n.note">
             <template v-else>{{ n.note }}</template>
@@ -336,7 +336,7 @@
             <label v-for="c in characterList" :key="c.key">
               <input type="checkbox" v-if="isGm" :checked="n.openList?.some(o => o === c.key)" @change.prevent="$event.target.checked ? n.openList.push(c.key) : removeFilter(n.openList, i => i === c.key)">
               <input type="checkbox" v-else :checked="n.openList?.some(o => o === c.key)" @click.prevent>
-              <span>{{ c.data?.pcNo ? `(PC${c.data?.pcNo})` : '' }}{{ c.data?.sheetInfo.characterName }}</span>
+              <span>{{ c.data?.sheetInfo.characterName }}</span>
             </label>
           </td>
         </tr>
@@ -349,14 +349,14 @@
         <template v-if="isGm || !n.secretcheck">
           <tr class="space" v-if="idx > 0"></tr>
           <tr>
-            <th>NPC</th>
+            <th><label :for="isGm ? `npc-${idx}-name` : ''">NPC</label></th>
             <td class="name">
-              <input type="text" v-if="isGm" v-model="n.name">
+              <input type="text" :id="`npc-${idx}-name`" v-if="isGm" v-model="n.name">
               <template v-else>{{ n.name }}</template>
             </td>
-            <th>概要</th>
+            <th><label :for="isGm ? `npc-${idx}-recommend` : ''">概要</label></th>
             <td class="recommend">
-              <input type="text" v-if="isGm" v-model="n.recommend">
+              <input type="text" :id="`npc-${idx}-recommend`" v-if="isGm" v-model="n.recommend">
               <template v-else>{{ n.recommend }}</template>
             </td>
           </tr>
@@ -387,12 +387,42 @@
             </td>
           </tr>
           <tr>
+            <th>URL</th>
+            <td class="url" colspan="3">
+              <input type="text" v-if="isGm" v-model="n.url" placeholder="キャラクターシート倉庫URL">
+              <a v-if="!isGm && isOpen(n.sheetOpenList) && n.sheetInfo && n.sheetInfo.characterName" :href="n.url" target="_blank" rel="noopener noreferrer">{{ n.sheetInfo.characterName }}</a>
+            </td>
+          </tr>
+          <tr v-if="isGm">
+            <th>秘匿情報閲覧パス</th>
+            <td class="sheet-view-pass">
+              <div class="h-box">
+                <input type="text" v-model="n.sheetViewPass">
+                <button @click="onReadNpcSheet(n.name)" :disabled="!n.url.trim()">読込</button>
+              </div>
+            </td>
+            <th>リンク</th>
+            <td class="npc-link">
+              <a v-if="n.sheetInfo && n.sheetInfo.characterName" :href="n.sheetInfo.url" target="_blank" rel="noopener noreferrer">{{ n.sheetInfo.characterName }}</a>
+            </td>
+          </tr>
+          <tr>
+            <th>キャラシ閲覧</th>
+            <td class="secret-owner" colspan="3">
+              <label v-for="c in characterList" :key="c.key">
+                <input type="checkbox" v-if="isGm" :checked="n.sheetOpenList?.some(o => o === c.key)" @change.prevent="$event.target.checked ? n.sheetOpenList.push(c.key) : removeFilter(n.sheetOpenList, i => i === c.key)">
+                <input type="checkbox" v-else :checked="n.sheetOpenList?.some(o => o === c.key)" @click.prevent>
+                <span>{{ c.data?.sheetInfo.characterName }}</span>
+              </label>
+            </td>
+          </tr>
+          <tr>
             <th>秘密保有</th>
             <td class="secret-owner" colspan="3">
               <label v-for="c in characterList" :key="c.key">
                 <input type="checkbox" v-if="isGm" :checked="n.openList?.some(o => o === c.key)" @change.prevent="$event.target.checked ? n.openList.push(c.key) : removeFilter(n.openList, i => i === c.key)">
                 <input type="checkbox" v-else :checked="n.openList?.some(o => o === c.key)" @click.prevent>
-                <span>{{ c.data?.pcNo ? `(PC${c.data?.pcNo})` : '' }}{{ c.data?.sheetInfo.characterName }}</span>
+                <span>{{ c.data?.sheetInfo.characterName }}</span>
               </label>
             </td>
           </tr>
@@ -408,9 +438,10 @@ import Store from './data'
 import UserStore from '@/core/data/user'
 import CharacterStore from '@/feature/character/data'
 import { ShinobigamiScenarioHelper } from '@/core/utility/shinobigamiScenario'
-import { errorDialog } from '@/core/utility/dialog'
+import { errorDialog, questionDialog } from '@/core/utility/dialog'
 import { v4 as uuidV4 } from 'uuid'
 import { removeFilter } from '@/core/utility/typescript'
+import { ShinobigamiHelper } from '@/core/utility/shinobigami'
 
 export default defineComponent({
   name: 'scenario-pane',
@@ -419,10 +450,10 @@ export default defineComponent({
     const elmId = uuidV4()
     const state = Store.injector()
     const scenario = computed(() => state.currentScenario)
-    const userStore = UserStore.injector()
+    const userState = UserStore.injector()
     const characterState = CharacterStore.injector()
 
-    const isGm = computed(() => userStore.selfUser?.type === 'gm')
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
     console.log(isGm.value ? 'isGM' : 'nonGM')
 
     const onReadSheet = async () => {
@@ -448,6 +479,18 @@ export default defineComponent({
       })
       rd.npc.forEach(npc => {
         npc.openList = []
+        npc.plot = -2
+        npc.isFumble = false
+        npc.isActed = false
+        npc.sheetViewPass = ''
+        npc.sheetInfo = null
+        npc.color = '#3E2723'
+        npc.chitImageList = []
+        npc.standImageList = []
+        npc.currentChitImage = -1
+        npc.currentStandImage = -1
+        npc.url = ''
+        npc.sheetOpenList = []
       })
       rd.enigma.forEach(e => {
         e.open = false
@@ -455,14 +498,47 @@ export default defineComponent({
       scenario.value.sheetInfo = rd
     }
 
+    const onReadNpcSheet = async (npcName: string) => {
+      const npc = scenario.value.sheetInfo.npc.find(n => n.name === npcName)
+      if (!npc) return
+
+      const helper = new ShinobigamiHelper(npc.url, npc.sheetViewPass)
+      if (!helper.isThis()) {
+        console.log('is not this')
+        return
+      }
+      const { data: rd, jsons } = await helper.getData()
+      console.log(jsons)
+      console.log(rd)
+      if (!rd) {
+        await errorDialog({
+          title: 'Loading Error',
+          text: 'URLまたは秘匿情報閲覧パスが誤っています。'
+        })
+        return
+      }
+
+      if (npc.sheetInfo) {
+        const result = await questionDialog({
+          title: '上書き確認',
+          text: `'${npc.name}'のキャラクターシート情報を上書きしますか？`,
+          confirmButtonText: '上書き',
+          cancelButtonText: 'キャンセル'
+        })
+        if (!result) return
+      }
+      npc.sheetInfo = rd
+    }
+
     return {
+      onReadNpcSheet,
       characterList: computed(() => characterState.characterList),
       removeFilter,
       elmId,
       isGm,
       scenario,
       onReadSheet,
-      isOpen: (openList: string[]) => userStore.selfUser?.refList.some(r => openList.some(o => o === r.key))
+      isOpen: (openList: string[]) => userState.selfUser?.refList.some(r => openList.some(o => o === r.key))
     }
   }
 })
@@ -491,6 +567,11 @@ export default defineComponent({
 
 .h-box {
   @include common.flex-box(row, flex-start, center);
+
+  input {
+    width: auto;
+    flex: 1;
+  }
 }
 
 @mixin set-column-width($class, $width) {
@@ -505,7 +586,7 @@ table {
   border-collapse: collapse;
   border-spacing: 0;
   table-layout: fixed;
-  font-size: var(--ninja-arts-table-font-size);
+  font-size: var(--sheet-font-size);
   width: 45em;
   max-width: 45em;
   min-width: 45em;
@@ -528,6 +609,10 @@ table {
   &.summary {
     th {
       width: 5em;
+    }
+
+    .secret {
+      width: 3em;
     }
   }
 
@@ -613,6 +698,11 @@ table {
 
   td {
     height: 1.9em;
+    text-align: left;
+  }
+
+  th {
+    text-align: center;
   }
 
   tbody tr {
@@ -621,12 +711,12 @@ table {
 
   td, th {
     position: relative;
-    text-align: center;
     border-style: solid;
     border-width: 1px;
     border-color: black;
     padding: 0;
     margin: 0;
+    white-space: pre-wrap;
 
     > * {
       vertical-align: middle;

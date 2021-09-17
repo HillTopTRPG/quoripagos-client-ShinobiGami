@@ -41,6 +41,8 @@ export default makeStore<Store>('cut-in-store', () => {
       return state.list
     },
     requestData,
-    insertData
+    insertData: async (...list) => {
+      await insertData(...list.map(c => ({ data: c })))
+    }
   }
 })

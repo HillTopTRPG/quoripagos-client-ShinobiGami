@@ -15,7 +15,6 @@ type Store = {
   list: StoreData<Scenario>[];
   currentIndex: number;
   requestData: () => Promise<void>;
-  insertData: (...c: Scenario[]) => Promise<void>;
   currentScenario: Scenario;
 }
 
@@ -43,38 +42,40 @@ export default makeStore<Store>('scenario-store', () => {
       return
     }
     await insertData({
-      url: '',
-      sheetViewPass: '',
-      sheetInfo: {
-        base: {
-          author: '',
-          boss: {
+      data: {
+        url: '',
+        sheetViewPass: '',
+        sheetInfo: {
+          base: {
+            author: '',
+            boss: {
+              name: '',
+              secret: false
+            },
+            limit: '',
             name: '',
-            secret: false
+            num: '',
+            menace: '',
+            menacePC: '',
+            publicview: false,
+            scene: '',
+            seq1: false,
+            seq2: false,
+            seq3: false,
+            type1: false,
+            type2: false,
+            type3: false,
+            type4: false,
+            stage: ''
           },
-          limit: '',
-          name: '',
-          num: '',
-          menace: '',
-          menacePC: '',
-          publicview: false,
-          scene: '',
-          seq1: false,
-          seq2: false,
-          seq3: false,
-          type1: false,
-          type2: false,
-          type3: false,
-          type4: false,
-          stage: ''
-        },
-        npc: [],
-        pc: [],
-        enigma: [],
-        characters: [],
-        prize: [],
-        righthand: [],
-        summary: []
+          npc: [],
+          pc: [],
+          enigma: [],
+          characters: [],
+          prize: [],
+          righthand: [],
+          summary: []
+        }
       }
     })
     let intervalId: number | null = null
@@ -110,7 +111,6 @@ export default makeStore<Store>('scenario-store', () => {
       }
       return scenario
     },
-    requestData,
-    insertData
+    requestData
   }
 })

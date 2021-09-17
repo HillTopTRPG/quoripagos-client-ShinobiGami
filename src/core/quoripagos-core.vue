@@ -21,7 +21,7 @@ export default defineComponent({
   },
   setup() {
     IgnoreWatchUpdateKeyStore.provider()
-    const modules = inject<MadeStore<{ ready: boolean }>[]>('$featureStores')
+    const modules = inject<[MadeStore<{ ready: boolean }>[], MadeStore<{ ready: boolean }>[]]>('$featureStores')
     return {
       modules
     }

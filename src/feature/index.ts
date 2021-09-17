@@ -12,24 +12,28 @@ import chatList from '@/feature/chat-list'
 import specialInput from '@/feature/special-input'
 import tag from '@/feature/tag'
 import userSetting from '@/feature/user-setting'
+import roomSetting from '@/feature/room-setting'
 import { installFeatures } from '@/core'
 
 const Plugin = {
   install(app: App): void {
     const features = [
-      battleField,
-      character,
-      cutIn,
-      localSetting,
-      memo,
-      persona,
-      scenario,
-      scene,
-      tag,
-      userSetting,
-      mediaList,
-      chatList,
-      specialInput
+      [roomSetting],
+      [
+        battleField,
+        character,
+        cutIn,
+        localSetting,
+        memo,
+        persona,
+        scenario,
+        scene,
+        tag,
+        userSetting,
+        mediaList,
+        chatList,
+        specialInput
+      ]
     ]
     installFeatures(app, features)
   }

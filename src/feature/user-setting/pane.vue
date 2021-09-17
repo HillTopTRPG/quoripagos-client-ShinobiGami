@@ -1,24 +1,8 @@
 <template>
   <div class="user-settings" v-if="userSetting">
     <label>
-      <span>特技表のフォントサイズ</span>
-      <input type="number" v-model="userSetting.skillTableFontSize" min="10" step="1">
-    </label>
-    <label>
-      <span>忍法一覧のフォントサイズ</span>
-      <input type="number" v-model="userSetting.ninjaArtsTableFontSize" min="10" step="1">
-    </label>
-    <label>
-      <span>背景一覧のフォントサイズ</span>
-      <input type="number" v-model="userSetting.backgroundTableFontSize" min="10" step="1">
-    </label>
-    <label>
-      <span>奥義一覧のフォントサイズ</span>
-      <input type="number" v-model="userSetting.specialArtsTableFontSize" min="10" step="1">
-    </label>
-    <label>
-      <span>忍具一覧のフォントサイズ</span>
-      <input type="number" v-model="userSetting.ninjaToolTableFontSize" min="10" step="1">
+      <span>キャラクター（シナリオ）シートのフォントサイズ</span>
+      <input type="number" v-model="userSetting.sheetFontSize" min="10" step="1">
     </label>
 
     <color-set-container />

@@ -49,9 +49,13 @@
       </div>
     </transition>
 
-    <room-data-provider :modules="modules" v-if="mode === 'play'">
-      <room-data-sync-provider :modules="modules">
-        <slot />
+    <room-data-provider :modules="modules[0]" v-if="mode === 'play'">
+      <room-data-sync-provider :modules="modules[0]">
+        <room-data-provider :modules="modules[1]" v-if="mode === 'play'">
+          <room-data-sync-provider :modules="modules[1]">
+            <slot />
+          </room-data-sync-provider>
+        </room-data-provider>
       </room-data-sync-provider>
     </room-data-provider>
   </div>
@@ -77,7 +81,7 @@ export default defineComponent({
   emits: ['loggedIn'],
   props: {
     modules: {
-      type: Array as PropType<MadeStore<{ ready: boolean }>[]>,
+      type: Array as PropType<MadeStore<{ ready: boolean }>[][]>,
       required: true
     }
   },
@@ -87,15 +91,15 @@ export default defineComponent({
     const classObj = ref<string[]>(['display'])
     const filterType = ref<FilterMode>('none')
 
-    const userStore = UserStore.injector()
+    const userState = UserStore.injector()
 
-    watch(() => userStore.userLoginResponse, () => {
+    watch(() => userState.userLoginResponse, () => {
       classObj.value.splice(
         0,
         1,
-        userStore.userLoginResponse ? 'hide' : 'display'
+        userState.userLoginResponse ? 'hide' : 'display'
       )
-      mode.value = userStore.userLoginResponse ? 'play' : 'login'
+      mode.value = userState.userLoginResponse ? 'play' : 'login'
       if (mode.value === 'play') {
         isHideMascotView.value = true
         setTimeout(() => {
@@ -110,7 +114,7 @@ export default defineComponent({
       isHideMascotView,
       classObj,
       ...pick(makeComputedObject(RoomStore.injector()), 'serverName', 'termsOfUse', 'roomList', 'serverDescription'),
-      ...pick(makeComputedObject(userStore), 'selectedRoomNo'),
+      ...pick(makeComputedObject(userState), 'selectedRoomNo'),
       layoutData
     }
   }

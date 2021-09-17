@@ -81,7 +81,7 @@ export type UpdateDataRequest<T> = {
 };
 
 type CommonStoreDataIf<T> = {
-  insertData: (...c: T[]) => Promise<void>;
+  insertData: (...c: (Partial<StoreData<T>> & { data: T })[]) => Promise<void>;
   requestData: () => Promise<void>;
 }
 
@@ -182,7 +182,7 @@ export function commonStoreDataProcess<T, U extends keyof T>(
           collectionSuffix: collectionName,
           share: 'room',
           force: true,
-          list: list.map(data => ({ data }))
+          list
         }
       )
     }
