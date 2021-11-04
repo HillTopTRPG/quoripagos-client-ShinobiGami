@@ -1,5 +1,5 @@
 <template>
-  <div class="velocity-column" v-for="(v, ind) in velocity" :key="v">
+  <div class="velocity-column" v-for="(v, idx) in velocity" :key="v">
     <div class="label">
       <span class="k">{{ v.k }}</span>
       <span class="a">{{ v.a }}</span>
@@ -13,22 +13,22 @@
             :character="c.data"
             :name="c.data.sheetInfo.characterName"
             :view-name="false"
-            v-if="c.data && c.data.plot === ind && !c.data.isFumble"
+            v-if="c.data && c.data.plot === idx && !c.data.isFumble"
           />
         </transition>
       </template>
-      <template v-for="(n, idx) in npcList" :key="`${idx}-${n.name}`">
+      <template v-for="(n, npcIdx) in npcList" :key="`${npcIdx}-${n.name}`">
         <transition name="character-fade">
           <character-chit-name
-            type="PC"
+            type="NPC"
             :character="n"
-            :view-name="false"
             :name="n.sheetInfo ? n.sheetInfo.characterName : n.name"
-            v-if="n && n.plot === ind && !n.isFumble && (isGm || !n.secretcheck)"
+            :view-name="false"
+            v-if="n && n.plot === idx && !n.secretcheck && !n.isFumble"
           />
         </transition>
       </template>
-      <span class="n">{{ ind }}</span>
+      <span class="n">{{ idx }}</span>
     </div>
     <div class="fumble">
       <template v-for="c in characterList" :key="c.key">
@@ -38,18 +38,18 @@
             :character="c.data"
             :name="c.data.sheetInfo.characterName"
             :view-name="false"
-            v-if="c.data && c.data.plot === ind && c.data.isFumble"
+            v-if="c.data && c.data.plot === idx && c.data.isFumble"
           />
         </transition>
       </template>
-      <template v-for="(n, idx) in npcList" :key="`${idx}-${n.name}`">
+      <template v-for="(n, npcIdx) in npcList" :key="`${npcIdx}-${n.name}`">
         <transition name="character-fade">
           <character-chit-name
             type="NPC"
             :character="n"
-            :view-name="false"
             :name="n.sheetInfo ? n.sheetInfo.characterName : n.name"
-            v-if="n && n.plot === ind && n.isFumble && (isGm || !n.secretcheck)"
+            :view-name="false"
+            v-if="n && n.plot === idx && !n.secretcheck && n.isFumble"
           />
         </transition>
       </template>
@@ -105,7 +105,7 @@ export default defineComponent({
 .character-fade-leave-active, .character-fade-enter-active {
   transition: opacity .5s;
 }
-.character-fade-leave-to, .character-fade-enter /* .fade-leave-active below version 2.1.8 */ {
+.character-fade-leave-to, .character-fade-enter-from /* .fade-leave-active below version 2.1.8 */ {
   opacity: 0;
 }
 

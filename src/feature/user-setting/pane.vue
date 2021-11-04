@@ -9,7 +9,7 @@
 
     <label class="color">
       <span>チャット文字色</span>
-      <font-color-select v-model="userSetting.fontColor" />
+      <font-color-select :editable="true" v-model="userSetting.fontColor" />
     </label>
 
     <button @click="onClickClose()">close</button>
@@ -46,5 +46,9 @@ export default defineComponent({
 .user-settings {
   @include common.flex-box(column, flex-start, flex-start);
   text-align: left;
+
+  input {
+    width: 3em;
+  }
 }
 </style>

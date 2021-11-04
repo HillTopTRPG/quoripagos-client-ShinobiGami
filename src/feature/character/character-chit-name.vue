@@ -1,29 +1,30 @@
 <template>
   <div
     v-if="character"
-    class="character"
-    :class="viewName ? 'has-name' : 'non-name'"
+    class="chit"
+    :class="[character.type, viewName ? 'has-name' : 'non-name']"
     :style="styleObj"
     @click="onSelect()"
   >
     <div class="container">
       <div class="type" v-if="viewName">{{ type }}</div>
-      <div class="image">{{ character?.chitImageList?.length ? '' : name ? name.substr(0, 1) : '' }}</div>
+      <div class="image">{{ oneName }}</div>
       <div class="label" v-if="viewName">{{ name }}</div>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, reactive, watch } from 'vue'
-import { CharacterBase } from './data'
+import { defineComponent, PropType, reactive, ref, watch } from 'vue'
+import { Character } from './data'
 import MediaListStore from '@/feature/media-list/data'
+import { Enigma, NPC } from '@/core/utility/shinobigamiScenario'
 
 export default defineComponent({
   name: 'character-chit-name',
   props: {
     character: {
-      type: Object as PropType<CharacterBase>,
+      type: Object as PropType<Character | NPC | Enigma>,
       required: true
     },
     type: {
@@ -43,18 +44,34 @@ export default defineComponent({
     const mediaListState = MediaListStore.injector()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const styleObj = reactive<any>({})
+    const oneName = ref('')
     watch(() => props.character, () => {
       const c = props.character
-      if (!c || !c.chitImageList || !c.standImageList) return null
-      const chitImageUrl = mediaListState.list.find(m => m.key === c.chitImageList[c.currentChitImage])?.data?.url
-      const standImageUrl = mediaListState.list.find(m => m.key === c.standImageList[c.currentStandImage])?.data?.url
-      styleObj['--color'] = c?.color
-      styleObj['--chit-image'] = chitImageUrl ? `url('${chitImageUrl}')` : ''
-      styleObj['--stand-image'] = standImageUrl ? `url('${standImageUrl}')` : ''
+      if (c.type === 'character' || c.type === 'npc') {
+        const chitImageUrl = mediaListState.list.find(m => m.key === c.chitImageList[c.currentChitImage])?.data?.url
+        const standImageUrl = mediaListState.list.find(m => m.key === c.standImageList[c.currentStandImage])?.data?.url
+        styleObj['--color'] = c?.color
+        styleObj['--chit-image'] = chitImageUrl ? `url('${chitImageUrl}')` : ''
+        styleObj['--stand-image'] = standImageUrl ? `url('${standImageUrl}')` : ''
+        if (chitImageUrl) {
+          oneName.value = ''
+        } else {
+          let name: string
+          if (c.type === 'character') name = c.sheetInfo.characterName
+          else name = c.sheetInfo?.characterName || c.name
+          oneName.value = name ? name.substr(0, 1) : ''
+        }
+      }
+      if (c.type === 'enigma') {
+        const imageUrl = mediaListState.list.find(m => m.key === c.imageKey)?.data?.url
+        styleObj['--chit-image'] = imageUrl ? `url('${imageUrl}')` : ''
+        oneName.value = c.name ? c.name.substr(0, 1) : ''
+      }
     }, { immediate: true, deep: true })
 
     return {
       styleObj,
+      oneName,
       onSelect: () => { emit('select') }
     }
   }
@@ -64,7 +81,7 @@ export default defineComponent({
 <style scoped lang="scss">
 @use "../../components/common";
 
-.character {
+.chit {
   width: min(100%, 5em);
   overflow: hidden;
   box-sizing: border-box;
@@ -101,7 +118,7 @@ export default defineComponent({
     &:before {
       content: '';
       @include common.position-full-size();
-      background-size: contain;
+      background-size: cover;
       background-repeat: no-repeat;
       background-position: center top;
       background-image: var(--chit-image);

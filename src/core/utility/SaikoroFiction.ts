@@ -57,7 +57,7 @@ function outputTable<T>(
     label: string;
     prop: keyof T | null;
   }[],
-  ind: number,
+  idx: number,
   convertFunc?: (
     prop: { label: string; prop: keyof T | null },
     value: T[keyof T] | null,
@@ -69,7 +69,7 @@ function outputTable<T>(
     .map(p => {
       const v = p.prop ? data[p.prop] : null
       if (convertFunc) {
-        const convertResult = convertFunc(p, v, data, ind)
+        const convertResult = convertFunc(p, v, data, idx)
         if (convertResult !== null) return nlFormat(convertResult)
       }
       if (typeof v === 'boolean') return `${v ? '[x]' : '[ ]'}`
@@ -89,7 +89,7 @@ export function outputTableList<T>(
     prop: { label: string; prop: keyof T | null },
     value: T[keyof T] | null,
     data: T,
-    ind: number
+    idx: number
   ) => string | null
 ): string[] {
   const strList: string[] = []
@@ -103,11 +103,11 @@ export function outputTableList<T>(
       .join('|')}|`
   )
   strList.push(
-    ...dataList.map((d, ind) =>
+    ...dataList.map((d, idx) =>
       outputTable<T>(
         d,
         props.map(p => ({ label: p.label, prop: p.prop })),
-        ind,
+        idx,
         convertFunc
       )
     )
@@ -126,7 +126,7 @@ export function outputPersonalityList(
   return outputTableList(personalityList, props, (prop, value) => {
     if (prop.prop === 'emotion') {
       return `{感情}[${emotionList
-        .flatMap((l, ind) => (ind ? l : [l[0]]))
+        .flatMap((l, idx) => (idx ? l : [l[0]]))
         .join('|')}](${value})`
     }
     return null

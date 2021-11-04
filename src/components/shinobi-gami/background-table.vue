@@ -9,7 +9,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="(bg, ind) in sheetInfo.backgroundList" :key="ind">
+      <tr v-for="(bg, idx) in sheetInfo.backgroundList" :key="idx">
         <td class="name"><span>
           <template v-if="isRawViewMode">{{ bg.name }}</template>
           <input v-else type="text" v-model="bg.name">
@@ -219,6 +219,7 @@ table.background {
       resize: vertical;
       box-sizing: border-box;
       min-height: 2.5em;
+      font-size: inherit;
     }
   }
 }

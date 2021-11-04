@@ -181,11 +181,11 @@ export default defineComponent({
 
     const getDiceRollResultText = (bcdiceResultText: string | null | undefined): string => {
       let raw = bcdiceResultText || ''
-      const index1 = raw.indexOf('→')
-      if (index1 > -1) {
-        const index2 = raw.indexOf('→', index1 + 1)
-        if (index2 > -1) {
-          raw = raw.substring(index1 + 1, index2).trim()
+      const idx1 = raw.indexOf('→')
+      if (idx1 > -1) {
+        const idx2 = raw.indexOf('→', idx1 + 1)
+        if (idx2 > -1) {
+          raw = raw.substring(idx1 + 1, idx2).trim()
         }
       }
       return raw

@@ -97,7 +97,7 @@ export default defineComponent({
 
     const uploadImages = async (wrapScene: WrapScene): Promise<void> => {
       const uploadMediaInfoList: UploadMediaInfo[] = [{
-        key: wrapScene.key,
+        key: wrapScene.imageInfo.key,
         url: '',
         dataLocation: 'server',
         ...getUrlTypes(wrapScene.imageInfo.name),

@@ -1,39 +1,51 @@
 <template>
-  <table class="ninja-arts" :class="[mode, isRawViewMode ? 'raw-view' : '']">
-    <thead>
-      <tr>
-        <th class="secret" v-if="mode === 'update' || mode === 'insert'" :class="{ focused: currentColumn === 'secret' }">秘</th>
-        <th class="name" :class="{ focused: currentColumn === 'name' }">忍法名</th>
-        <th class="type" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'type' }">タイプ</th>
-        <th class="target-skill" :class="{ focused: currentColumn === 'target-skill' }">指定特技</th>
-        <th class="range" :class="{ focused: currentColumn === 'range' }">間合</th>
-        <th class="cost" :class="{ focused: currentColumn === 'cost' }">コスト</th>
-        <th class="effect" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'effect' }">効果</th>
-        <th class="page" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'page' }">参照p</th>
-      </tr>
-    </thead>
-    <tbody>
-      <template v-for="(n, ind) in sheetInfo.ninjaArtsList" :key="ind">
-        <tr @click="onSelectArts(ind)" v-if="isGm || isOwn || !n.secret">
+  <view-mode
+    v-if="mode !== 'normal'"
+    title="忍法"
+    normal-label="通常"
+    :use-simple="true"
+    simple-label="簡易"
+    alt-label="削除／入替"
+    :editable="(isGm || isOwn) && (mode === 'update' || mode === 'insert')"
+    v-model:viewMode="viewMode"
+    :use-add="!isRawViewMode"
+    @add="addNinjaArts()"
+  />
+  <draggable
+    tag="table"
+    :list="ninjaArtsListWrap"
+    item-key="idx"
+    group="ninjaArts"
+    @change="onDrag('change', $event)"
+    @start="onDrag('start', $event)"
+    @end="onDrag('end', $event)"
+    ghost-class="ghost"
+    class="ninja-arts"
+    :class="[mode, isRawViewMode ? 'raw-view' : '']"
+    handle=".draggable-handle"
+  >
+    <template #item="{element}">
+      <tbody>
+        <tr @click="onSelectArts(element.idx)" v-if="isGm || isOwn || !element.ninjaArts.secret">
           <td class="secret" v-if="mode === 'update' || mode === 'insert'" :class="{ focused: currentColumn === 'secret' }">
-            <input type="checkbox" @focus="onFocusColumn($event)" v-if="isGm || isOwn" :id="`secret-${ind}-${elmId}`" v-model="n.secret">
-            <input type="checkbox" @focus="onFocusColumn($event)" v-else :id="`secret-${ind}-${elmId}`" :checked="n.secret" @click.prevent>
+            <input type="checkbox" @focus="onFocusColumn($event)" v-if="isGm || isOwn" :id="`secret-${element.idx}-${elmId}`" v-model="element.ninjaArts.secret">
+            <input type="checkbox" @focus="onFocusColumn($event)" v-else :id="`secret-${element.idx}-${elmId}`" :checked="element.ninjaArts.secret" @click.prevent>
           </td>
           <td class="name" :class="{ focused: currentColumn === 'name' }">
-            <ruby v-if="isRawViewMode" v-html="getNameHtml(n.name)"></ruby>
-            <input type="text" @focus="onFocusColumn($event)" :id="`name-${ind}-${elmId}`" v-else v-model="n.name">
+            <ruby v-if="isRawViewMode" v-html="getNameHtml(element.ninjaArts.name)"></ruby>
+            <input type="text" @focus="onFocusColumn($event)" :id="`name-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.name">
           </td>
           <td class="type" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'type' }">
-            <template v-if="isRawViewMode">{{ n.type }}</template>
-            <select @focus="onFocusColumn($event)" :id="`type-${ind}-${elmId}`" v-else v-model="n.type">
+            <template v-if="isRawViewMode">{{ element.ninjaArts.type }}</template>
+            <select @focus="onFocusColumn($event)" :id="`type-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.type">
               <option value="攻撃">攻撃</option>
               <option value="サポート">ｻﾎﾟｰﾄ</option>
               <option value="装備">装備</option>
             </select>
           </td>
           <td class="target-skill" :class="{ focused: currentColumn === 'target-skill' }">
-            <template v-if="isRawViewMode">{{ n.targetSkill }}</template>
-            <input type="text" @focus="onFocusColumn($event)" :id="`targetSkill-${ind}-${elmId}`" v-else :list="`target-skill-list-${elmId}`" v-model="n.targetSkill">
+            <template v-if="isRawViewMode">{{ element.ninjaArts.targetSkill }}</template>
+            <input type="text" @focus="onFocusColumn($event)" :id="`targetSkill-${element.idx}-${elmId}`" v-else :list="`target-skill-list-${elmId}`" v-model="element.ninjaArts.targetSkill">
             <datalist :id="`target-skill-list-${elmId}`">
               <template v-for="col of 6" :key="col">
                 <option v-for="row of 11" :key="row" :label="`${skillColumnList[col - 1]} - ${row + 1}`" :value="SkillTable[row - 1][col - 1]">{{ SkillTable[row - 1][col - 1] }}</option>
@@ -41,47 +53,70 @@
             </datalist>
           </td>
           <td class="range" :class="{ focused: currentColumn === 'range' }">
-            <template v-if="isRawViewMode">{{ n.range }}</template>
-            <input type="text" @focus="onFocusColumn($event)" :id="`range-${ind}-${elmId}`" v-else v-model="n.range">
+            <template v-if="isRawViewMode">{{ element.ninjaArts.range }}</template>
+            <input type="text" @focus="onFocusColumn($event)" :id="`range-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.range">
           </td>
           <td class="cost" :class="{ focused: currentColumn === 'cost' }">
-            <template v-if="isRawViewMode">{{ n.cost }}</template>
-            <input type="text" @focus="onFocusColumn($event)" :id="`cost-${ind}-${elmId}`" v-else v-model="n.cost">
+            <template v-if="isRawViewMode">{{ element.ninjaArts.cost }}</template>
+            <input type="text" @focus="onFocusColumn($event)" :id="`cost-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.cost">
           </td>
-          <td class="effect" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'effect' }">
-            <template v-if="isRawViewMode">{{ n.effect }}</template>
-            <textarea @focus="onFocusColumn($event)" :id="`effect-${ind}-${elmId}`" v-else v-model="n.effect"></textarea>
+          <td class="effect" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'effect' }" v-show="viewMode === 'normal'">
+            <template v-if="isRawViewMode">{{ element.ninjaArts.effect }}</template>
+            <textarea @focus="onFocusColumn($event)" :id="`effect-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.effect"></textarea>
           </td>
-          <td class="page" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'page' }">
-            <template v-if="isRawViewMode">{{ n.page }}</template>
-            <input type="text" @focus="onFocusColumn($event)" :id="`page-${ind}-${elmId}`" v-else v-model="n.page">
+          <td class="page" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'page' }" v-show="viewMode === 'normal'">
+            <template v-if="isRawViewMode">{{ element.ninjaArts.page }}</template>
+            <input type="text" @focus="onFocusColumn($event)" :id="`page-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.page">
           </td>
+          <td v-if="viewMode === 'alt'" class="draggable-handle"></td>
+          <td v-if="viewMode === 'alt'"><button @click="onDelete(element.idx)">削除</button></td>
         </tr>
-        <tr @click="onSelectArts(ind)">
-          <td class="effect-normal" colspan="4" v-show="mode === 'normal' && ind === selectedArts">{{ n.effect }}</td>
+        <tr @click="onSelectArts(element.idx)">
+          <td class="effect-normal" colspan="4" v-show="mode === 'normal' && element.idx === selectedArts">{{ element.ninjaArts.effect }}</td>
         </tr>
-      </template>
-    </tbody>
-    <tfoot v-if="mode !== 'view'">
+      </tbody>
+    </template>
+    <template #header>
+      <thead>
       <tr>
-        <td colspan="4">
-          <button @click="reloadNinjaArts()" v-if="mode === 'normal' && (isGm || isOwn)">忍法再読み込み</button>
-          <button @click="addNinjaArts()" v-if="!isRawViewMode">追加</button>
-        </td>
+        <th class="secret" v-if="mode === 'update' || mode === 'insert'" :class="{ focused: currentColumn === 'secret' }">秘</th>
+        <th class="name" :class="{ focused: currentColumn === 'name' }">忍法名</th>
+        <th class="type" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'type' }">タイプ</th>
+        <th class="target-skill" :class="{ focused: currentColumn === 'target-skill' }">指定特技</th>
+        <th class="range" :class="{ focused: currentColumn === 'range' }">間合</th>
+        <th class="cost" :class="{ focused: currentColumn === 'cost' }">コスト</th>
+        <th class="effect" v-if="mode !== 'normal'" v-show="viewMode === 'normal'" :class="{ focused: currentColumn === 'effect' }">効果</th>
+        <th class="page" v-if="mode !== 'normal'" v-show="viewMode === 'normal'" :class="{ focused: currentColumn === 'page' }">参照p</th>
+        <th v-if="viewMode === 'alt'">入替</th>
+        <th class="delete-btn" v-if="viewMode === 'alt'">削除</th>
       </tr>
-    </tfoot>
-  </table>
+      </thead>
+    </template>
+    <template #footer v-if="mode !== 'view'">
+      <tfoot>
+        <tr>
+          <td colspan="4">
+            <button @click="reloadNinjaArts()" v-if="mode === 'normal' && (isGm || isOwn)">忍法再読み込み</button>
+          </td>
+        </tr>
+      </tfoot>
+    </template>
+  </draggable>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType, ref } from 'vue'
+import { computed, defineComponent, PropType, ref, watch } from 'vue'
 import SpecialInputStore from '@/feature/special-input/data'
 import UserStore from '@/core/data/user'
 import { v4 as uuidV4 } from 'uuid'
-import { ShinobiGami, ShinobigamiHelper, SkillTable } from '@/core/utility/shinobigami'
+import { NinjaArts, ShinobiGami, ShinobigamiHelper, SkillTable } from '@/core/utility/shinobigami'
+import ViewMode from '@/components/shinobi-gami/view-mode.vue'
+import draggable from 'vuedraggable'
+import { questionDialog } from '@/core/utility/dialog'
 
 export default defineComponent({
   name: 'ninja-arts-table',
+  components: { ViewMode, draggable },
   props: {
     mode: {
       type: String as PropType<'normal' | 'view' | 'update' | 'insert'>,
@@ -158,6 +193,40 @@ export default defineComponent({
     const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
     const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
 
+    type WrapNinjaArts = { idx: number; ninjaArts: NinjaArts; }
+    const makeWrapList = (): WrapNinjaArts[] => props.sheetInfo.ninjaArtsList.map((ninjaArts, idx) => ({ idx, ninjaArts })) || []
+    const ninjaArtsListWrap = ref<WrapNinjaArts[]>([])
+    watch(() => props.sheetInfo.ninjaArtsList, () => {
+      ninjaArtsListWrap.value = makeWrapList()
+      ninjaArtsListWrap.value.forEach(na => console.log(na.idx, na.ninjaArts.name))
+    }, { deep: true, immediate: true })
+
+    const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
+
+    const onAdd = () => {
+      console.log('emit onAdd')
+    }
+
+    const onDelete = async (idx: number) => {
+      if (!(await questionDialog({
+        title: '忍法削除',
+        text: `${props.sheetInfo.ninjaArtsList[idx].name}を削除します。`,
+        confirmButtonText: '削除',
+        cancelButtonText: 'キャンセル'
+      }))) return
+      const ninjaArtsList = props.sheetInfo.ninjaArtsList
+      ninjaArtsList.splice(idx, 1)
+    }
+
+    const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
+      console.log(type, evt.oldIndex, evt.newIndex, props.sheetInfo.ninjaArtsList[evt.oldIndex || 0].name)
+      if (type === 'end') {
+        const ninjaArtsList = props.sheetInfo.ninjaArtsList
+        const target = ninjaArtsList.splice((evt.oldIndex || 1) - 1, 1)[0]
+        ninjaArtsList.splice((evt.newIndex || 1) - 1, 0, target)
+      }
+    }
+
     return {
       isGm,
       isOwn,
@@ -176,7 +245,12 @@ export default defineComponent({
           return `${p1}<rp>（</rp><rt>${p2}</rt><rp>）</rp>`
         }),
       reloadNinjaArts,
-      addNinjaArts
+      addNinjaArts,
+      ninjaArtsListWrap,
+      viewMode,
+      onAdd,
+      onDelete,
+      onDrag
     }
   }
 })
@@ -184,6 +258,18 @@ export default defineComponent({
 
 <style scoped lang="scss">
 @use "../common";
+
+.ghost {
+  opacity: 0.5;
+}
+
+.draggable-handle {
+  min-width: 3em;
+  background-color: lightgray;
+  background-image: radial-gradient(white 30%, transparent 30%);
+  background-size: 0.3em 0.3em;
+  cursor: move;
+}
 
 table.ninja-arts {
   border-collapse: collapse;
@@ -316,6 +402,7 @@ table.ninja-arts {
       resize: vertical;
       box-sizing: border-box;
       min-height: 2.5em;
+      font-size: inherit;
     }
   }
 

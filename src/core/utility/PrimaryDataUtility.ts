@@ -81,12 +81,12 @@ export function convertBooleanNull(str: string | null): boolean | null {
  */
 export function listDelete<T>(
   list: T[],
-  filterFunc: (item: T, index: number) => boolean
+  filterFunc: (item: T, idx: number) => boolean
 ): void {
   const deleteIndexList = list
-    .map((item, index) => ({ item, index }))
-    .filter(info => filterFunc(info.item, info.index))
-    .map(info => info.index)
+    .map((item, idx) => ({ item, idx }))
+    .filter(info => filterFunc(info.item, info.idx))
+    .map(info => info.idx)
   deleteIndexList.sort((n1, n2) => {
     if (n1 > n2) return -1
     if (n1 < n2) return 1

@@ -1,9 +1,9 @@
 <template>
   <div class="color-set-container">
     <color-test
-      v-for="(c, ind) in userSettingList"
+      v-for="(c, idx) in userSettingList"
       @click="selectColorSetting(c)"
-      :key="ind" :user-setting="c"
+      :key="idx" :user-setting="c"
       :class="{ selected: c.accent1Color === userSetting?.accent1Color && c.accent2Color === userSetting?.accent2Color }"
     />
   </div>

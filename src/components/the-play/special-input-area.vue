@@ -23,7 +23,7 @@
       <select :value="ninjaArts" @change="setNinjaArts($event.target.value)" v-if="ninjaArtsList.length">
         <option disabled>忍法</option>
         <option value="">忍法未選択</option>
-        <option v-for="(n, ind) in ninjaArtsList" :key="`${ind}-${n.name}`" :value="n.name">{{ n.name }}</option>
+        <option v-for="(n, idx) in ninjaArtsList" :key="`${idx}-${n.name}`" :value="n.name">{{ n.name }}</option>
       </select>
       <select :value="targetSkill" @change="setTargetSkill($event.target.value)">
         <option disabled>特技</option>

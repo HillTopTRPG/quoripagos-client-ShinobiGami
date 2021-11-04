@@ -8,7 +8,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="(t, ind) in sheetInfo.ninjaToolList" :key="ind">
+      <tr v-for="(t, idx) in sheetInfo.ninjaToolList" :key="idx">
         <td class="name"><span>
           <template v-if="isRawViewMode">{{ t.name }}</template>
           <input type="text" v-model="t.name" v-else>
@@ -199,6 +199,7 @@ table.ninja-tools {
       resize: vertical;
       box-sizing: border-box;
       min-height: 2.5em;
+      font-size: inherit;
     }
   }
 }

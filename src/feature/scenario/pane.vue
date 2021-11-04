@@ -102,6 +102,9 @@
         <th class="th1"><label :for="isGm ? `boss-${elmId}` : ''">ボス</label></th>
         <td colspan="3">
           <input type="text" v-if="isGm" :id="`boss-${elmId}`" v-model="scenario.sheetInfo.base.boss.name">
+          <template v-else>
+            <template v-if="!scenario.sheetInfo.base.boss.secret">{{ scenario.sheetInfo.base.boss.name }}</template>
+          </template>
         </td>
         <th class="th3"><label :for="isGm ? `boss-secret-${elmId}` : ''">秘密</label></th>
         <td>
@@ -189,51 +192,7 @@
   </div>
 
   <div class="v-box">
-    <table class="enigma">
-      <thead>
-      <tr>
-        <th class="name">偽装</th>
-        <th class="power">戦力</th>
-        <th class="menace">脅威度</th>
-        <th class="notes">説明</th>
-        <th class="target">バインド</th>
-        <th class="open">公開</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-for="(n, idx) in scenario.sheetInfo.enigma" :key="idx">
-        <td class="name">
-          <input type="text" v-if="isGm" v-model="n.name">
-          <template v-else>{{ n.name }}</template>
-        </td>
-        <td class="power">
-          <input type="text" v-if="isGm" v-model="n.power">
-          <template v-if="!isGm && n.open">{{ n.power }}</template>
-        </td>
-        <td class="menace">
-          <input type="text" v-if="isGm" v-model="n.menace">
-          <template v-if="!isGm && n.open">{{ n.menace }}</template>
-        </td>
-        <td class="notes">
-          <input type="text" v-if="isGm" v-model="n.notes">
-          <template v-if="!isGm && n.open">{{ n.notes }}</template>
-        </td>
-        <td class="target">
-          <input type="text" v-if="isGm" v-model="n.target">
-          <template v-if="!isGm && n.open">{{ n.target }}</template>
-        </td>
-        <td class="open">
-          <input type="checkbox" v-if="isGm" v-model="n.open">
-          <input type="checkbox" v-else :checked="n.open" @click.prevent>
-        </td>
-      </tr>
-      </tbody>
-      <tfoot v-if="isGm">
-      <tr>
-<!--        <td colspan="5"><button @click="onAddEnigma()">追加</button></td>-->
-      </tr>
-      </tfoot>
-    </table>
+    <scenario-enigma :sheetInfo="scenario.sheetInfo" mode="scenario" />
     <table class="right-hand">
       <thead>
         <tr>
@@ -266,195 +225,45 @@
     </table>
   </div>
 
-  <table class="summary">
-    <caption>説明</caption>
-    <tbody>
-      <template v-for="(n, idx) in scenario.sheetInfo.summary" :key="idx">
-        <template v-if="isGm || !n.secret">
-          <tr>
-            <th><label :for="isGm ? `summary-title-${idx}-${elmId}` : ''"></label>タイトル</th>
-            <td class="title">
-              <input type="text" v-if="isGm" :id="`summary-title-${idx}-${elmId}`" v-model="n.title">
-              <template v-else>{{ n.title }}</template>
-            </td>
-            <th><label :for="isGm ? `summary-secret-${idx}-${elmId}` : ''"></label>秘</th>
-            <td class="secret">
-              <input type="checkbox" v-if="isGm" :id="`summary-secret-${idx}-${elmId}`" v-model="n.secret">
-              <input type="checkbox" v-else :checked="n.secret" @click.prevent>
-            </td>
-          </tr>
-          <tr>
-            <td class="contents" colspan="4">
-              <textarea v-if="isGm" v-model="n.contents"></textarea>
-              <template v-else>{{ n.contents }}</template>
-            </td>
-          </tr>
-        </template>
-      </template>
-    </tbody>
-  </table>
-  <table class="pc">
-    <tbody>
-      <template v-for="(n, idx) in scenario.sheetInfo.pc" :key="idx">
-        <tr class="space" v-if="idx > 0"></tr>
-        <tr>
-          <th>PC</th>
-          <td class="name">
-            <input type="text" v-if="isGm" v-model="n.name">
-            <template v-else>{{ n.name }}</template>
-          </td>
-          <th>推奨</th>
-          <td class="recommend">
-            <input type="text" v-if="isGm" v-model="n.recommend">
-            <template>{{ n.recommend }}</template>
-          </td>
-        </tr>
-        <tr>
-          <th>導入</th>
-          <td class="intro" colspan="3">
-            <textarea v-if="isGm" v-model="n.intro"></textarea>
-            <template v-else>{{ n.intro }}</template>
-          </td>
-        </tr>
-        <tr>
-          <th>使命</th>
-          <td class="mission" colspan="3">
-            <input type="text" v-if="isGm" v-model="n.mission">
-            <template v-else>{{ n.mission }}</template>
-          </td>
-        </tr>
-        <tr>
-          <th>秘密</th>
-          <td class="secret" colspan="3">
-            <textarea v-if="isGm" v-model="n.secret"></textarea>
-            <template v-if="!isGm && isOpen(n.openList)">{{ n.secret }}</template>
-          </td>
-        </tr>
-        <tr>
-          <th>秘密保有</th>
-          <td class="secret-owner" colspan="3">
-            <label v-for="c in characterList" :key="c.key">
-              <input type="checkbox" v-if="isGm" :checked="n.openList?.some(o => o === c.key)" @change.prevent="$event.target.checked ? n.openList.push(c.key) : removeFilter(n.openList, i => i === c.key)">
-              <input type="checkbox" v-else :checked="n.openList?.some(o => o === c.key)" @click.prevent>
-              <span>{{ c.data?.sheetInfo.characterName }}</span>
-            </label>
-          </td>
-        </tr>
-      </template>
-    </tbody>
-  </table>
-  <table class="npc">
-    <tbody>
-      <template v-for="(n, idx) in scenario.sheetInfo.npc" :key="idx">
-        <template v-if="isGm || !n.secretcheck">
-          <tr class="space" v-if="idx > 0"></tr>
-          <tr>
-            <th><label :for="isGm ? `npc-${idx}-name` : ''">NPC</label></th>
-            <td class="name">
-              <input type="text" :id="`npc-${idx}-name`" v-if="isGm" v-model="n.name">
-              <template v-else>{{ n.name }}</template>
-            </td>
-            <th><label :for="isGm ? `npc-${idx}-recommend` : ''">概要</label></th>
-            <td class="recommend">
-              <input type="text" :id="`npc-${idx}-recommend`" v-if="isGm" v-model="n.recommend">
-              <template v-else>{{ n.recommend }}</template>
-            </td>
-          </tr>
-          <tr>
-            <th>設定</th>
-            <td class="intro" colspan="3">
-              <textarea v-if="isGm" v-model="n.intro"></textarea>
-              <template>{{ n.intro }}</template>
-            </td>
-          </tr>
-          <tr>
-            <th>使命</th>
-            <td class="mission">
-              <input type="text" v-if="isGm" v-model="n.mission">
-              <template v-else>{{ n.mission }}</template>
-            </td>
-            <th>秘匿</th>
-            <td class="secret-check">
-              <input type="checkbox" v-if="isGm" v-model="n.secretcheck">
-              <input type="checkbox" v-else :checked="n.secretcheck" @click.prevent>
-            </td>
-          </tr>
-          <tr>
-            <th>秘密</th>
-            <td class="secret" colspan="3">
-              <textarea v-if="isGm" v-model="n.secret"></textarea>
-              <template v-if="!isGm && isOpen(n.openList)">{{ n.secret }}</template>
-            </td>
-          </tr>
-          <tr>
-            <th>URL</th>
-            <td class="url" colspan="3">
-              <input type="text" v-if="isGm" v-model="n.url" placeholder="キャラクターシート倉庫URL">
-              <a v-if="!isGm && isOpen(n.sheetOpenList) && n.sheetInfo && n.sheetInfo.characterName" :href="n.url" target="_blank" rel="noopener noreferrer">{{ n.sheetInfo.characterName }}</a>
-            </td>
-          </tr>
-          <tr v-if="isGm">
-            <th>秘匿情報閲覧パス</th>
-            <td class="sheet-view-pass">
-              <div class="h-box">
-                <input type="text" v-model="n.sheetViewPass">
-                <button @click="onReadNpcSheet(n.name)" :disabled="!n.url.trim()">読込</button>
-              </div>
-            </td>
-            <th>リンク</th>
-            <td class="npc-link">
-              <a v-if="n.sheetInfo && n.sheetInfo.characterName" :href="n.sheetInfo.url" target="_blank" rel="noopener noreferrer">{{ n.sheetInfo.characterName }}</a>
-            </td>
-          </tr>
-          <tr>
-            <th>キャラシ閲覧</th>
-            <td class="secret-owner" colspan="3">
-              <label v-for="c in characterList" :key="c.key">
-                <input type="checkbox" v-if="isGm" :checked="n.sheetOpenList?.some(o => o === c.key)" @change.prevent="$event.target.checked ? n.sheetOpenList.push(c.key) : removeFilter(n.sheetOpenList, i => i === c.key)">
-                <input type="checkbox" v-else :checked="n.sheetOpenList?.some(o => o === c.key)" @click.prevent>
-                <span>{{ c.data?.sheetInfo.characterName }}</span>
-              </label>
-            </td>
-          </tr>
-          <tr>
-            <th>秘密保有</th>
-            <td class="secret-owner" colspan="3">
-              <label v-for="c in characterList" :key="c.key">
-                <input type="checkbox" v-if="isGm" :checked="n.openList?.some(o => o === c.key)" @change.prevent="$event.target.checked ? n.openList.push(c.key) : removeFilter(n.openList, i => i === c.key)">
-                <input type="checkbox" v-else :checked="n.openList?.some(o => o === c.key)" @click.prevent>
-                <span>{{ c.data?.sheetInfo.characterName }}</span>
-              </label>
-            </td>
-          </tr>
-        </template>
-      </template>
-    </tbody>
-  </table>
+  <div class="v-box">
+    <scenario-summary :sheetInfo="scenario.sheetInfo" />
+  </div>
+
+  <div class="v-box">
+    <scenario-pc :pc-list="scenario.sheetInfo.pc" character-key="" mode="scenario" />
+  </div>
+
+  <div class="v-box">
+    <scenario-npc :npc-list="scenario.sheetInfo.npc" npc-name="" mode="scenario" />
+  </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent } from 'vue'
+import { computed, defineComponent, ref } from 'vue'
 import Store from './data'
 import UserStore from '@/core/data/user'
 import CharacterStore from '@/feature/character/data'
 import { ShinobigamiScenarioHelper } from '@/core/utility/shinobigamiScenario'
-import { errorDialog, questionDialog } from '@/core/utility/dialog'
+import { errorDialog } from '@/core/utility/dialog'
 import { v4 as uuidV4 } from 'uuid'
 import { removeFilter } from '@/core/utility/typescript'
-import { ShinobigamiHelper } from '@/core/utility/shinobigami'
+import ScenarioPc from '@/feature/scenario/scenario-pc.vue'
+import ScenarioNpc from '@/feature/scenario/scenario-npc.vue'
+import ScenarioEnigma from '@/feature/scenario/scenario-enigma.vue'
+import ScenarioSummary from '@/feature/scenario/scenario-summary.vue'
 
 export default defineComponent({
   name: 'scenario-pane',
+  components: { ScenarioSummary, ScenarioEnigma, ScenarioNpc, ScenarioPc },
   emits: ['close'],
   setup() {
     const elmId = uuidV4()
     const state = Store.injector()
     const scenario = computed(() => state.currentScenario)
-    const userState = UserStore.injector()
     const characterState = CharacterStore.injector()
 
+    const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
-    console.log(isGm.value ? 'isGM' : 'nonGM')
 
     const onReadSheet = async () => {
       console.log(scenario.value.url)
@@ -474,10 +283,21 @@ export default defineComponent({
         })
         return
       }
+      rd.enigma.forEach(enigma => {
+        enigma.type = 'enigma'
+        enigma.imageKey = null
+        enigma.disarm = false
+        enigma.disarmMethod = ''
+        enigma.effect = ''
+        enigma.targetSkill = ''
+      })
       rd.pc.forEach(pc => {
+        pc.type = 'pc'
         pc.openList = []
+        pc.characterKey = ''
       })
       rd.npc.forEach(npc => {
+        npc.type = 'npc'
         npc.openList = []
         npc.plot = -2
         npc.isFumble = false
@@ -498,40 +318,18 @@ export default defineComponent({
       scenario.value.sheetInfo = rd
     }
 
-    const onReadNpcSheet = async (npcName: string) => {
-      const npc = scenario.value.sheetInfo.npc.find(n => n.name === npcName)
-      if (!npc) return
-
-      const helper = new ShinobigamiHelper(npc.url, npc.sheetViewPass)
-      if (!helper.isThis()) {
-        console.log('is not this')
-        return
+    const openEnigmaIdxList = ref<number[]>([])
+    const openEnigma = (idx: number) => {
+      if (openEnigmaIdxList.value.some(i => i === idx)) {
+        removeFilter(openEnigmaIdxList.value, i => i === idx)
+      } else {
+        openEnigmaIdxList.value.push(idx)
       }
-      const { data: rd, jsons } = await helper.getData()
-      console.log(jsons)
-      console.log(rd)
-      if (!rd) {
-        await errorDialog({
-          title: 'Loading Error',
-          text: 'URLまたは秘匿情報閲覧パスが誤っています。'
-        })
-        return
-      }
-
-      if (npc.sheetInfo) {
-        const result = await questionDialog({
-          title: '上書き確認',
-          text: `'${npc.name}'のキャラクターシート情報を上書きしますか？`,
-          confirmButtonText: '上書き',
-          cancelButtonText: 'キャンセル'
-        })
-        if (!result) return
-      }
-      npc.sheetInfo = rd
     }
 
     return {
-      onReadNpcSheet,
+      openEnigmaIdxList,
+      openEnigma,
       characterList: computed(() => characterState.characterList),
       removeFilter,
       elmId,
@@ -574,14 +372,6 @@ export default defineComponent({
   }
 }
 
-@mixin set-column-width($class, $width) {
-  .#{$class} {
-    width: $width;
-    min-width: $width;
-    max-width: $width;
-  }
-}
-
 table {
   border-collapse: collapse;
   border-spacing: 0;
@@ -616,13 +406,6 @@ table {
     }
   }
 
-  &.enigma {
-    @include set-column-width("menace", 5em);
-    @include set-column-width("notes", 13em);
-    @include set-column-width("power", 6em);
-    @include set-column-width("name", 6em);
-  }
-
   &.pc,
   &.npc {
     th {
@@ -633,6 +416,14 @@ table {
       label {
         @include common.flex-box(row, flex-start, center);
       }
+    }
+  }
+
+  @mixin set-column-width($class, $width) {
+    .#{$class} {
+      width: $width;
+      min-width: $width;
+      max-width: $width;
     }
   }
 
@@ -705,10 +496,6 @@ table {
     text-align: center;
   }
 
-  tbody tr {
-    cursor: pointer;
-  }
-
   td, th {
     position: relative;
     border-style: solid;
@@ -720,19 +507,6 @@ table {
 
     > * {
       vertical-align: middle;
-    }
-  }
-
-  @mixin set-width($width) {
-    width: $width;
-    min-width: $width;
-    max-width: $width;
-  }
-
-  @mixin set-label-css($direction, $height, $horizontal: center) {
-    > label {
-      @include common.flex-box($direction, $horizontal, center);
-      height: $height;
     }
   }
 }

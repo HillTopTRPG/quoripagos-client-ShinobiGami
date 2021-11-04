@@ -24,7 +24,7 @@
           </div>
         </div>
         <div class="backgrounds">
-          <div class="background" v-for="(bg, ind) in character.sheetInfo.backgroundList" :key="ind">{{ bg.name }}</div>
+          <div class="background" v-for="(bg, idx) in character.sheetInfo.backgroundList" :key="idx">{{ bg.name }}</div>
         </div>
 
         <div class="part-wrap">
@@ -111,7 +111,7 @@ export default defineComponent({
 .character-fade-leave-active, .character-fade-enter-active {
   transition: opacity .5s;
 }
-.character-fade-leave-to, .character-fade-enter /* .fade-leave-active below version 2.1.8 */ {
+.character-fade-leave-to, .character-fade-enter-from /* .fade-leave-active below version 2.1.8 */ {
   opacity: 0;
 }
 

@@ -202,7 +202,12 @@ table.character-basic-info {
     cursor: inherit;
     width: 100%;
     height: 100%;
+    font-size: inherit;
     box-sizing: border-box;
+  }
+
+  select {
+    font-size: inherit;
   }
 
   td, th {
@@ -240,18 +245,6 @@ table.character-basic-info {
 
     &.c2 {
       width: 10em;
-    }
-  }
-
-  @mixin set-width($width) {
-    width: $width;
-    min-width: $width;
-    max-width: $width;
-  }
-  @mixin set-label-css($direction, $height, $horizontal: center) {
-    > label {
-      @include common.flex-box($direction, $horizontal, center);
-      height: $height;
     }
   }
 }

@@ -2,15 +2,18 @@ import { getJsonByGet, getJsonByJsonp } from '@/core/utility/Utility'
 import { CharacterBase } from '@/feature/character/data'
 
 export type PC = {
+  type: 'pc';
   intro: string;
   mission: string;
   name: string;
   recommend: string;
   secret: string;
   openList: string[];
+  characterKey: string;
 }
 
-export type NPC = PC & CharacterBase & {
+export type NPC = Omit<PC, 'type'> & CharacterBase & {
+  type: 'npc';
   secretcheck: boolean;
   url: string;
   sheetOpenList: string[];
@@ -24,6 +27,9 @@ export type Prize = {
 }
 
 export type Enigma = {
+  type: 'enigma';
+  // 画像
+  imageKey: string | null;
   // 脅威度
   menace: string;
   // 偽装
@@ -34,8 +40,18 @@ export type Enigma = {
   power: string;
   // バインド
   target: string;
+  // バインドPC
+  targetId: string;
   // 公開状態
   open: boolean;
+  // 解除状態
+  disarm: boolean;
+  // 解除判定
+  disarmMethod: string;
+  // 判定特技
+  targetSkill: string;
+  // 効果
+  effect: string;
 }
 
 export type RightHand = {

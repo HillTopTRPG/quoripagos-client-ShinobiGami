@@ -7,7 +7,11 @@
       <div class="content">
         <template v-if="r.detail">
           <button class="room-btn" @click="selectRoom(r.roomNo)" v-show="r.roomNo !== selectedRoomNo">入室</button>
+          <button class="room-btn" @click="deleteRoom(r.roomNo)" v-show="r.roomNo !== selectedRoomNo">削除</button>
           {{ r.detail.roomName }}
+          <template v-if="r.roomNo === selectedRoomNo">
+            <button class="un-select-btn" @click="unSelectRoom()">選択解除</button>
+          </template>
         </template>
         <template v-else-if="r.status === 'initial-touched'">
           <div class="room-action-area" v-if="r.roomNo === selectedRoomNo">
@@ -200,6 +204,10 @@ select {
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .un-select-btn {
+    margin-left: 2em;
   }
 
   .date-time-set {

@@ -119,6 +119,7 @@ export default makeStore<Store>('socketStore', () => {
     return new Promise<U>((resolve, reject) => {
       socket.value?.once(resultEvent || `result-${event}`, (err: Error, result: U) => {
         if (err) {
+          console.log(JSON.stringify(err))
           errorDialog({ title: 'Server Error', text: err.message })
           reject(err)
           return

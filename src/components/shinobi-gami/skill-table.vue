@@ -211,9 +211,9 @@ export default defineComponent({
       const damageList = skill.value.damagedList
       if (e.target.checked) {
         damagedColList.push(col)
-        damageList.push(...SkillTable.map((row, ind) => ({
+        damageList.push(...SkillTable.map((row, idx) => ({
           name: row[col],
-          row: ind,
+          row: idx,
           column: col
         })))
       } else {

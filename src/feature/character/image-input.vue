@@ -57,8 +57,8 @@ export default defineComponent({
   &.chit img {
     width: 5em;
     height: 5em;
-    object-fit: contain;
-    object-position: center bottom;
+    object-fit: cover;
+    object-position: center top;
   }
 
   &.stand img {

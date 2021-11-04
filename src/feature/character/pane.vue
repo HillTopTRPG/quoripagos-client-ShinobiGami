@@ -1,28 +1,49 @@
 <template>
   <div class="character-pane-container">
     <details open>
-      <summary>編集</summary>
-      <div class="h-box">
-        <template v-for="(n, idx) in npcList" :key="idx">
-          <character-chit-name type="NPC" :character="n" :view-name="true" :name="n.name" @select="onSelectEditCharacter(n.name)" />
-        </template>
-        <template v-for="c in characterList" :key="c.key">
-          <character-chit-name type="PC" :character="c.data" :view-name="true" :name="c.data.sheetInfo.characterName" @select="onSelectEditCharacter(c.key)" />
-        </template>
-        <template v-if="editCharacter">
-          <character-form
-            mode="update"
-            :character="editCharacter"
-            :character-key="editCharacterKey"
-            v-if="editCharacter"
-            v-model:url="editCharacter.sheetInfo.url"
-            v-model:sheet-view-pass="editCharacter.sheetViewPass"
-          />
-        </template>
+      <summary>編集／閲覧</summary>
+      <div class="v-box">
+        <div class="h-box">
+          <template v-for="(n, idx) in npcList" :key="idx">
+            <character-chit-name v-if="isGm || !n.secretcheck" type="NPC" :character="n" :view-name="true" :name="n.sheetInfo ? n.sheetInfo.characterName : n.name" @select="onSelectEditCharacter(n.name)" />
+          </template>
+          <template v-for="(e, idx) in enigmaList" :key="idx">
+            <character-chit-name type="エニグマ" :character="e" :view-name="true" :name="e.name" @select="onSelectEditCharacter(e.name)" />
+          </template>
+          <template v-for="c in characterList" :key="c.key">
+            <character-chit-name type="PC" :character="c.data" :view-name="true" :name="c.data.sheetInfo.characterName" @select="onSelectEditCharacter(c.key)" />
+          </template>
+        </div>
+        <div class="h-box">
+          <template v-if="editCharacter">
+            <character-form
+              mode="update"
+              :character="editCharacter"
+              :character-key="editCharacterKey"
+              v-if="editCharacter?.type === 'character'"
+              v-model:url="editCharacter.sheetInfo.url"
+              v-model:sheet-view-pass="editCharacter.sheetViewPass"
+            />
+            <character-form
+              mode="update"
+              :character="editCharacter"
+              :character-key="editCharacterKey"
+              v-if="editCharacter?.type === 'npc'"
+              v-model:url="editCharacter.url"
+              v-model:sheet-view-pass="editCharacter.sheetViewPass"
+            />
+            <character-form
+              mode="update"
+              :character="editCharacter"
+              :character-key="editCharacterKey"
+              v-if="editCharacter?.type === 'enigma'"
+            />
+          </template>
+        </div>
       </div>
     </details>
     <details>
-      <summary>追加</summary>
+      <summary>キャラクター追加</summary>
       <div class="h-box">
         <character-form
           mode="insert"
@@ -47,6 +68,8 @@ import { removeFilter } from '@/core/utility/typescript'
 import CharacterForm from '@/feature/character/character-form.vue'
 import MediaListStore from '@/feature/media-list/data'
 import CharacterChitName from '@/feature/character/character-chit-name.vue'
+import UserStore from '@/core/data/user'
+import { Enigma, NPC } from '@/core/utility/shinobigamiScenario'
 
 export default defineComponent({
   name: 'character-pane',
@@ -121,11 +144,6 @@ export default defineComponent({
       emit('close')
     }
 
-    const selectCharacterKey = ref<string | null>(null)
-    const onSelectEditCharacter = (characterKey: string) => {
-      selectCharacterKey.value = characterKey
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const getStyleObj = (c: CharacterBase | undefined): any => {
       if (!c || !c.chitImageList || !c.standImageList) return null
@@ -138,36 +156,51 @@ export default defineComponent({
       }
     }
 
-    const editCharacterType = ref<null | 'character' | 'npc'>(null)
-    const editCharacter = ref<null | CharacterBase>(null)
+    const selectCharacterKey = ref<string | null>(null)
+    const onSelectEditCharacter = (characterKey: string) => {
+      selectCharacterKey.value = characterKey
+    }
+
+    const editCharacter = ref<null | Character | NPC | Enigma>(null)
     const editCharacterKey = ref<null | string>(null)
-    watch(selectCharacterKey, () => {
-      const npc = scenarioState.currentScenario.sheetInfo.npc.find(n => n.sheetInfo?.characterName === selectCharacterKey.value)
+    watch([
+      selectCharacterKey,
+      () => scenarioState.currentScenario.sheetInfo.npc,
+      () => state.characterList
+    ], () => {
+      const npc = scenarioState.currentScenario.sheetInfo.npc.find(n => (n.sheetInfo?.characterName || n.name) === selectCharacterKey.value)
       if (npc) {
-        editCharacterType.value = 'npc'
         editCharacter.value = npc
         editCharacterKey.value = npc.name
         return
       }
+      const enigma = scenarioState.currentScenario.sheetInfo.enigma.find(e => e.name === selectCharacterKey.value)
+      if (enigma) {
+        editCharacter.value = enigma
+        editCharacterKey.value = enigma.name
+        return
+      }
       const character = state.characterList.find(c => c.key === selectCharacterKey.value)
       if (character && character.data) {
-        editCharacterType.value = 'character'
         editCharacter.value = character.data
         editCharacterKey.value = character.key
         return
       }
-      editCharacterType.value = null
       editCharacter.value = null
     }, { deep: true, immediate: true })
 
+    const userState = UserStore.injector()
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+
     return {
-      editCharacterType,
+      isGm,
       editCharacter,
       editCharacterKey,
       getStyleObj,
       selectCharacterKey,
       onSelectEditCharacter,
       npcList: computed(() => scenarioState.currentScenario.sheetInfo.npc),
+      enigmaList: computed(() => scenarioState.currentScenario.sheetInfo.enigma),
       characterList: state.makeWrapCharacterList(),
       userSetting,
       character,
@@ -207,6 +240,11 @@ details {
     overflow: hidden;
     font-weight: bold;
   }
+}
+
+.v-box {
+  @include common.flex-box(column, stretch, flex-start);
+  gap: 0.5rem
 }
 
 .h-box {

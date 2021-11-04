@@ -1,49 +1,67 @@
 <template>
-  <label v-if="mode === 'update' && (isGm || isOwn)">入力内容はリアルタイムで反映されます（画像はアップロードボタンで反映）</label>
-  <label v-if="mode === 'update' && !isGm && !isOwn">他の人のキャラクターです。閲覧のみ可能です。</label>
-  <div class="url-block">
+  <label class="message" v-if="mode === 'update' && (isGm || isOwn)">入力内容はリアルタイムで反映されます（画像はアップロードボタンで反映）</label>
+  <label class="message" v-if="mode === 'update' && !isGm && !isOwn">閲覧のみ可能です。</label>
+  <div class="url-block" v-if="character.type !== 'enigma' && (isGm || isOwn || mode === 'insert' || isViewSheet)">
     <label class="url">
       <span>キャラクターシート倉庫URL</span>
-      <input v-if="isGm || isOwn" type="text" v-model="urlWrap" placeholder="https://character-sheets.appspot.com/shinobigami/edit.html?key=">
-      <a v-else :href="urlWrap" target="_blank" rel="noopener noreferrer">{{ character.sheetInfo.characterName }}</a>
+      <input v-if="isGm || isOwn || mode === 'insert'" type="text" v-model="urlWrap" placeholder="https://character-sheets.appspot.com/shinobigami/edit.html?key=">
+      <template v-else>
+        <a v-if="urlWrap" :href="urlWrap" target="_blank" rel="noopener noreferrer">{{ character.sheetInfo?.characterName || character.name }}</a>
+      </template>
     </label>
-    <label v-if="isGm || isOwn" class="sheet-view-pass"><span>秘匿情報閲覧パス</span><input type="text" v-model="sheetViewPassWrap" placeholder=""><button @click="onReadSheet()">読込</button></label>
+    <label v-if="isGm || isOwn || mode === 'insert'" class="sheet-view-pass">
+      <span>秘匿情報閲覧パス</span>
+      <input type="text" v-model="sheetViewPassWrap" placeholder="">
+      <button @click="onReadSheet()">読込</button>
+    </label>
   </div>
-  <character-basic-info :sheet-info="character.sheetInfo" :character-key="characterKey" :mode="mode" />
-  <skill-table :sheet-info="character.sheetInfo" :character-key="characterKey" :mode="mode" />
-  <ninja-arts-table :sheet-info="character.sheetInfo" :character-key="characterKey" :url="character.sheetInfo.url" :sheet-view-pass="character.sheetViewPass" :mode="mode" />
-  <background-table :sheet-info="character.sheetInfo" :character-key="characterKey" :url="character.sheetInfo.url" :sheet-view-pass="character.sheetViewPass" :mode="mode" />
-  <special-arts-table :sheet-info="character.sheetInfo" :character-key="characterKey" :url="character.sheetInfo.url" :sheet-view-pass="character.sheetViewPass" :mode="mode" />
-  <ninja-tool-table :sheet-info="character.sheetInfo" :character-key="characterKey" :url="character.sheetInfo.url" :sheet-view-pass="character.sheetViewPass" :mode="mode" />
-  <label class="color">
-    <span>チャット文字色</span>
-    <font-color-select :editable="mode !== 'insert' && (isGm || isOwn)" v-model="colorWrap" />
-  </label>
-  <div class="chit-image-box" v-if="isGm || isOwn">
-    <template v-for="(n, ind) in chitImageList" :key="n.key">
-      <label>
-        コマ画像{{ ind + 1 }}
-        <image-input :image-info="n" type="chit" @update="value => onUpdateImage('chit', n.key, value)" />
+  <scenario-pc v-if="scenarioPcInfo" :character-key="characterKey" :pc-list="[scenarioPcInfo]" mode="character" />
+  <scenario-npc v-if="scenarioNpcInfo" :npc-name="characterKey" :npc-list="[scenarioNpcInfo]" mode="character" />
+  <template v-if="isGm || isViewSheet">
+    <template v-if="character.type === 'character' || character.type === 'npc'">
+      <template v-if="character.sheetInfo">
+        <character-basic-info :sheet-info="character.sheetInfo" :character-key="characterKey" :mode="mode" />
+        <skill-table :sheet-info="character.sheetInfo" :character-key="characterKey" :mode="mode" />
+        <ninja-arts-table :sheet-info="character.sheetInfo" :character-key="characterKey" :url="character.sheetInfo.url" :sheet-view-pass="character.sheetViewPass" :mode="mode" />
+        <background-table :sheet-info="character.sheetInfo" :character-key="characterKey" :url="character.sheetInfo.url" :sheet-view-pass="character.sheetViewPass" :mode="mode" />
+        <special-arts-table :sheet-info="character.sheetInfo" :character-key="characterKey" :url="character.sheetInfo.url" :sheet-view-pass="character.sheetViewPass" :mode="mode" />
+        <ninja-tool-table v-if="isGm || isOwn || mode === 'insert'" :sheet-info="character.sheetInfo" :character-key="characterKey" :url="character.sheetInfo.url" :sheet-view-pass="character.sheetViewPass" :mode="mode" />
+      </template>
+
+      <label class="color">
+        <span>チャット文字色</span>
+        <font-color-select :editable="mode === 'insert' || isGm || isOwn" v-model="colorWrap" />
       </label>
+
+      <div class="chit-image-box" v-if="mode === 'insert' || isGm || isOwn">
+        <template v-for="(n, idx) in chitImageList" :key="n.key">
+          <label>
+            コマ画像{{ idx + 1 }}
+            <image-input :image-info="n" type="chit" @update="value => onUpdateImage('chit', n.key, value)" />
+          </label>
+        </template>
+      </div>
+
+      <div class="stand-image-box" v-if="mode === 'insert' || isGm || isOwn">
+        <template v-for="(n, idx) in standImageList" :key="n.key">
+          <label>
+            立ち絵画像{{ idx + 1 }}
+            <image-input :image-info="n" type="stand" @update="value => onUpdateImage('stand', n.key, value)" />
+          </label>
+        </template>
+      </div>
+      <button v-if="mode === 'update' && (isGm || isOwn)" @click="uploadImages()">Image Upload</button>
     </template>
-  </div>
-  <div class="stand-image-box" v-if="isGm || isOwn">
-    <template v-for="(n, ind) in standImageList" :key="n.key">
-      <label>
-        立ち絵画像{{ ind + 1 }}
-        <image-input :image-info="n" type="stand" @update="value => onUpdateImage('stand', n.key, value)" />
-      </label>
-    </template>
-  </div>
-  <button v-if="mode === 'update' && (isGm || isOwn)" @click="uploadImages()">Image Upload</button>
+  </template>
   <button v-if="mode === 'insert'" @click="insertCharacter()">Add</button>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref, PropType, reactive, watch, computed } from 'vue'
-import CharacterStore, { CharacterBase, ImageInfo } from '@/feature/character/data'
+import CharacterStore, { Character, ImageInfo } from '@/feature/character/data'
 import MediaListStore, { MediaStore } from '@/feature/media-list/data'
 import UserStore from '@/core/data/user'
+import ScenarioStore from '@/feature/scenario/data'
 import CharacterBasicInfo from '@/components/shinobi-gami/character-basic-info.vue'
 import SkillTable from '@/components/shinobi-gami/skill-table.vue'
 import NinjaArtsTable from '@/components/shinobi-gami/ninja-arts-table.vue'
@@ -56,13 +74,16 @@ import { v4 as uuidV4 } from 'uuid'
 import { StoreData } from '@/core/utility/FileUtility'
 import { ShinobigamiHelper } from '@/core/utility/shinobigami'
 import { errorDialog } from '@/core/utility/dialog'
+import { Enigma, NPC, PC } from '@/core/utility/shinobigamiScenario'
+import ScenarioPc from '@/feature/scenario/scenario-pc.vue'
+import ScenarioNpc from '@/feature/scenario/scenario-npc.vue'
 
 export default defineComponent({
   name: 'character-form',
-  components: { ImageInput, FontColorSelect, NinjaToolTable, SpecialArtsTable, BackgroundTable, NinjaArtsTable, SkillTable, CharacterBasicInfo },
+  components: { ScenarioNpc, ScenarioPc, ImageInput, FontColorSelect, NinjaToolTable, SpecialArtsTable, BackgroundTable, NinjaArtsTable, SkillTable, CharacterBasicInfo },
   props: {
     character: {
-      type: Object as PropType<CharacterBase>,
+      type: Object as PropType<Character | NPC | Enigma>,
       required: true
     },
     characterKey: {
@@ -71,11 +92,11 @@ export default defineComponent({
     },
     url: {
       type: String,
-      required: true
+      default: null
     },
     sheetViewPass: {
       type: String,
-      required: true
+      default: null
     },
     mode: {
       type: String as PropType<'update' | 'insert'>,
@@ -90,8 +111,6 @@ export default defineComponent({
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
     const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
-
-    console.log(props.character)
 
     const urlWrap = ref(props.url)
     watch(() => props.url, () => {
@@ -109,14 +128,16 @@ export default defineComponent({
       emit('update:sheetViewPass', sheetViewPassWrap.value)
     })
 
-    const colorWrap = ref(props.character.color)
-    watch(() => props.character.color, () => {
-      colorWrap.value = props.character.color
-    })
-    watch(colorWrap, () => {
-      const character = props.character
-      character.color = colorWrap.value
-    })
+    const colorWrap = ref<string | null>(props.character.type === 'enigma' ? null : props.character.color)
+    if (props.character.type !== 'enigma') {
+      watch(() => props.character.type !== 'enigma' ? props.character.color : null, () => {
+        colorWrap.value = props.character.type !== 'enigma' ? props.character.color : null
+      })
+      watch(colorWrap, () => {
+        const character = props.character
+        if (character.type !== 'enigma') character.color = colorWrap.value || ''
+      })
+    }
 
     const makeImageList = (imageKeyList: string[]): ImageInfo[] => imageKeyList
       .map(ci => mediaListState.list.find(m => m.key === ci))
@@ -129,12 +150,14 @@ export default defineComponent({
       }))
       .concat({ key: uuidV4(), type: 'new-file', name: '', src: '' })
 
-    const chitImageList = ref<ImageInfo[]>(makeImageList(props.character.chitImageList))
-    const standImageList = ref<ImageInfo[]>(makeImageList(props.character.standImageList))
+    const chitImageList = ref<ImageInfo[]>([])
+    const standImageList = ref<ImageInfo[]>([])
     watch(() => props.character, () => {
-      chitImageList.value = makeImageList(props.character.chitImageList)
-      standImageList.value = makeImageList(props.character.standImageList)
-    })
+      if (props.character.type !== 'enigma') {
+        chitImageList.value = makeImageList(props.character.chitImageList)
+        standImageList.value = makeImageList(props.character.standImageList)
+      }
+    }, { immediate: true })
 
     const onUpdateImage = (type: 'chit' | 'stand', key: string, value: ImageInfo) => {
       const list: ImageInfo[] = type === 'chit' ? chitImageList.value : standImageList.value
@@ -160,12 +183,13 @@ export default defineComponent({
     }
 
     const uploadImages = () => {
-      characterState.uploadCharacterImage(props.character, [chitImageList.value, standImageList.value])
+      if (props.character.type !== 'enigma') {
+        characterState.uploadCharacterImage(props.character, [chitImageList.value, standImageList.value])
+      }
     }
 
     const onReadSheet = async () => {
-      if (!isGm.value && !isOwn.value) return
-      console.log(urlWrap.value)
+      if (!isGm.value && !isOwn.value && props.mode === 'update') return
       if (!urlWrap.value) return
       const helper = new ShinobigamiHelper(urlWrap.value, sheetViewPassWrap.value)
       if (!helper.isThis()) {
@@ -184,10 +208,31 @@ export default defineComponent({
       }
 
       const character = props.character
-      character.sheetInfo = rd
+      if (character.type !== 'enigma') character.sheetInfo = rd
     }
 
+    const scenarioState = ScenarioStore.injector()
+    const scenarioPcInfo = ref<PC | null>(null)
+    const scenarioNpcInfo = ref<NPC | null>(null)
+    watch([
+      () => scenarioState.currentScenario?.sheetInfo.pc,
+      () => scenarioState.currentScenario?.sheetInfo.npc,
+      () => props.characterKey
+    ], () => {
+      scenarioPcInfo.value = scenarioState.currentScenario?.sheetInfo.pc.find(pc => props.characterKey && pc.characterKey === props.characterKey) || null
+      scenarioNpcInfo.value = scenarioState.currentScenario?.sheetInfo.npc.find(npc => props.characterKey && npc.name === props.characterKey) || null
+    }, { deep: true, immediate: true })
+
+    const isViewSheet = ref(false)
+    watch([() => props.character, () => userState.selfUser?.refList], () => {
+      isViewSheet.value =
+        props.character.type === 'character' ||
+        userState.selfUser?.refList.some(r => props.character.type === 'character' || (props.character.type === 'npc' && props.character.sheetOpenList.some(o => o === r.key))) ||
+        false
+    }, { deep: true, immediate: true })
+
     return {
+      isViewSheet,
       isGm,
       isOwn,
       colorWrap,
@@ -197,9 +242,13 @@ export default defineComponent({
       insertCharacter,
       uploadImages,
       characterWrap: reactive(props.character),
+      scenarioPcInfo,
+      scenarioNpcInfo,
       chitImageList,
       standImageList,
-      onUpdateImage
+      onUpdateImage,
+      isOpen: (openList: string[]) => userState.selfUser?.refList.some(r => openList.some(o => o === r.key)),
+      refList: computed(() => userState.selfUser?.refList || [])
     }
   }
 })
@@ -207,6 +256,12 @@ export default defineComponent({
 
 <style scoped lang="scss">
 @use "../../components/common";
+
+.message {
+  width: 100%;
+  text-align: left;
+  font-weight: bold;
+}
 
 .url-block {
   @include common.flex-box(column, stretch, flex-start);

@@ -9,7 +9,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="(sa, ind) in sheetInfo.specialArtsList" :key="ind">
+      <tr v-for="(sa, idx) in sheetInfo.specialArtsList" :key="idx">
         <td class="name"><span>
           <template v-if="isRawViewMode">{{ sa.name }}</template>
           <input type="text" v-model="sa.name" v-else>
@@ -87,7 +87,7 @@ export default defineComponent({
       specialArtsList.splice(0, specialArtsList.length, ...rd.specialArtsList)
     }
 
-    const skillList = computed(() => props.sheetInfo.skill.learnedList.map(l => l.name).filter((s, ind, self) => self.findIndex(ss => ss === s) === ind))
+    const skillList = computed(() => props.sheetInfo.skill.learnedList.map(l => l.name).filter((s, idx, self) => self.findIndex(ss => ss === s) === idx))
 
     const addSpecialArts = () => {
       const specialArtsList = props.sheetInfo.specialArtsList
@@ -221,6 +221,7 @@ table.special-arts {
       resize: vertical;
       box-sizing: border-box;
       min-height: 2.5em;
+      font-size: inherit;
     }
   }
 }

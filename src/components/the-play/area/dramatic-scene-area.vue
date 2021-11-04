@@ -17,7 +17,7 @@
         :character="n"
         :view-name="false"
         :name="n.sheetInfo ? n.sheetInfo.characterName : n.name"
-        v-if="n && n.plot === -1"
+        v-if="n && n.plot === -1 && !n.secretcheck"
       />
     </transition>
   </template>

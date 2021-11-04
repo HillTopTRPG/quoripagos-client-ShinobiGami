@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 import { makeStore, StoreUpdateProperties } from '@/core/utility/vue3'
 import { RoomInfoExtend } from '@/core/data/room'
 import SocketStore from '@/core/data/socket'
+import { inputTextDialog } from '@/core/utility/dialog'
 
 export type UserType = 'gm' | 'pl' | 'visitor';
 
@@ -31,6 +32,11 @@ export type CreateRoomRequest = {
   roomCreatePassword?: string;
 }
 
+export type DeleteRoomRequest = {
+  roomNo: number;
+  roomPassword: string;
+};
+
 export type RoomLoginRequest = {
   roomNo: number;
   roomPassword: string;
@@ -53,6 +59,8 @@ type Store = {
   createRoom: (roomNo: number, roomName: string, roomPassword: string) => Promise<void>;
   touchRoom: (roomNo: number) => Promise<void>;
   selectRoom: (roomNo: number) => Promise<void>;
+  unSelectRoom: () => void;
+  deleteRoom: (roomNo: number) => Promise<void>;
   loginRoom: (roomNo: number, roomPassword: string) => Promise<void>;
   loginUser: (userName: string, userType: UserType, userPassword: string) => Promise<void>;
 }
@@ -127,12 +135,36 @@ export default makeStore<Store>('user-store', () => {
       state.selectedRoomNo = roomNo
       state.lastRoomLoginType = 'create'
     },
+    unSelectRoom: () => {
+      state.selectedRoomNo = 0
+    },
     selectRoom: async (roomNo: number) => {
       // 入室準備
       state.userList.splice(0, state.userList.length)
       state.userLoginResponse = null
       state.selectedRoomNo = roomNo
       state.lastRoomLoginType = ''
+    },
+    deleteRoom: async (roomNo: number) => {
+      // TODO
+      const roomPassword = await inputTextDialog({
+        title: '部屋の削除',
+        text: `部屋${roomNo}を削除します。\n部屋パスワードを入力してください。`,
+        confirmButtonText: '削除',
+        cancelButtonText: 'キャンセル'
+      })
+      console.log(roomPassword)
+      if (roomPassword == null) return
+      const crReq: DeleteRoomRequest = {
+        roomNo,
+        roomPassword
+      }
+      try {
+        await socketStore.sendSocketServerRoundTripRequest<DeleteRoomRequest, void>('room-api-delete-room', crReq)
+      } catch (e) {
+        console.log('a!a!a!')
+        console.log(e.message)
+      }
     },
     loginRoom: async (roomNo: number, roomPassword: string) => {
       // 入室

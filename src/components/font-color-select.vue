@@ -4,10 +4,10 @@
       class="color"
       :class="c === modelValue ? 'selected' : ''"
       :style="{ '--color': c }"
-      v-for="(c, ind) in colorList"
+      v-for="(c, idx) in colorList"
       :key="c"
       @click="selectColor(c)"
-    >{{ ind.toString().padStart(3, '0') }}</span>
+    >{{ idx.toString().padStart(3, '0') }}</span>
   </span>
 </template>
 

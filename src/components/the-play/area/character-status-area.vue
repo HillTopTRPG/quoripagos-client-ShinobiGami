@@ -19,6 +19,10 @@
     <template v-for="(n, idx) in npcList" :key="`${idx}-${n.name}`">
       <div class="npc-status" v-if="isGm || !n.secretcheck">
         <character-chit-name type="NPC" :character="n" :view-name="true" :name="n.name" />
+        <select v-if="isGm" v-model="n.secretcheck">
+          <option :value="false">公開</option>
+          <option :value="true">非公開</option>
+        </select>
         <select v-model="n.isActed">
           <option disabled>行動</option>
           <option :value="false">未</option>
@@ -35,9 +39,13 @@
     <template v-for="(e, idx) in enigmaList" :key="`${idx}-${e.name}`">
       <div class="enigma-status">
         <character-chit-name type="エニグマ" :character="e" :view-name="true" :name="e.name" />
-        <select v-model="e.open">
+        <select v-if="isGm" v-model="e.open">
           <option :value="false">非公開</option>
           <option :value="true">公開</option>
+        </select>
+        <select v-else :value="e.open">
+          <option :value="false" :disabled="e.open === true">非公開</option>
+          <option :value="true" :disabled="e.open === false">公開</option>
         </select>
       </div>
     </template>
