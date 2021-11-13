@@ -114,6 +114,7 @@ export default defineComponent({
     background-color: transparent;
     background-image:
       repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4) 7px,transparent 0, transparent 14px);
+    text-shadow: 1px 1px 0 #fff, -1px 1px 0 #fff, 1px -1px 0 #fff, -1px -1px 0 #fff;
 
     &:before {
       content: '';

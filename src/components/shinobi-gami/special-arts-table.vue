@@ -1,55 +1,88 @@
 <template>
-  <table class="special-arts" :class="isRawViewMode ? 'raw-view' : ''">
-    <thead>
-      <tr>
-        <th class="name">名称</th>
-        <th class="skill">指定特技</th>
-        <th class="effect">効果／強み／弱み</th>
-        <th class="direction">演出</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="(sa, idx) in sheetInfo.specialArtsList" :key="idx">
-        <td class="name"><span>
-          <template v-if="isRawViewMode">{{ sa.name }}</template>
-          <input type="text" v-model="sa.name" v-else>
-        </span></td>
-        <td class="skill">
-          <span>
-            <template v-if="isRawViewMode">{{ sa.skill }}</template>
-            <select v-model="sa.skill" v-else>
-              <option value=""></option>
-              <option :value="s" v-for="s in skillList" :key="s">{{ s }}</option>
-            </select>
-          </span>
-        </td>
-        <td class="effect">
-          <template v-if="isRawViewMode">{{ sa.effect }}</template>
-          <textarea v-model="sa.effect" v-else></textarea>
-        </td>
-        <td class="direction">
-          <template v-if="isRawViewMode">{{ sa.direction }}</template>
-          <textarea v-model="sa.direction" v-else></textarea>
-        </td>
-      </tr>
-    </tbody>
-    <tfoot v-if="!isRawViewMode">
-      <tr>
-        <td colspan="4">
-          <button @click="addSpecialArts()">追加</button>
-        </td>
-      </tr>
-    </tfoot>
-  </table>
+  <div class="v-box">
+    <view-mode
+      v-if="mode !== 'normal'"
+      title="奥義"
+      normal-label="通常"
+      :use-simple="true"
+      simple-label="簡易"
+      alt-label="入替/削除"
+      :editable="!isRawViewMode"
+      v-model:viewMode="viewMode"
+      :use-add="!isRawViewMode"
+      @add="addSpecialArts()"
+    />
+    <draggable
+      tag="table"
+      :list="specialArtsListWrap"
+      item-key="idx"
+      group="special-arts"
+      @change="onDrag('change', $event)"
+      @start="onDrag('start', $event)"
+      @end="onDrag('end', $event)"
+      ghost-class="ghost"
+      class="special-arts"
+      :class="[mode, isRawViewMode ? 'raw-view' : '']"
+      handle=".draggable-handle"
+    >
+      <template #header>
+        <thead>
+        <tr>
+          <th class="name">名称</th>
+          <th class="skill" v-show="viewMode !== 'alt'">指定特技</th>
+          <th class="effect" v-show="viewMode === 'normal'">効果／強み／弱み</th>
+          <th class="direction" v-show="viewMode === 'normal'">演出</th>
+          <th v-if="viewMode === 'alt'">入替</th>
+          <th class="delete-btn" v-if="viewMode === 'alt'">削除</th>
+        </tr>
+        </thead>
+      </template>
+      <template #item="{element}">
+        <tbody>
+        <tr>
+          <td class="name">
+            <span>
+              <template v-if="isRawViewMode">{{ element.specialArts.name }}</template>
+              <input type="text" v-model="element.specialArts.name" v-else>
+            </span>
+          </td>
+          <td class="skill" v-show="viewMode !== 'alt'">
+            <span>
+              <template v-if="isRawViewMode">{{ element.specialArts.skill }}</template>
+              <select v-model="element.specialArts.skill" v-else>
+                <option value=""></option>
+                <option :value="s" v-for="s in skillList" :key="s">{{ s }}</option>
+              </select>
+            </span>
+          </td>
+          <td class="effect" v-show="viewMode === 'normal'">
+            <template v-if="isRawViewMode">{{ element.specialArts.effect }}</template>
+            <textarea v-model="element.specialArts.effect" v-else></textarea>
+          </td>
+          <td class="direction" v-show="viewMode === 'normal'">
+            <template v-if="isRawViewMode">{{ element.specialArts.direction }}</template>
+            <textarea v-model="element.specialArts.direction" v-else></textarea>
+          </td>
+          <td v-if="viewMode === 'alt'" class="draggable-handle"></td>
+          <td v-if="viewMode === 'alt'"><button @click="onDelete(element.idx)">削除</button></td>
+        </tr>
+        </tbody>
+      </template>
+    </draggable>
+  </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType } from 'vue'
-import { ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
+import { computed, defineComponent, PropType, ref, watch } from 'vue'
+import { ShinobiGami, ShinobigamiHelper, SpecialArts } from '@/core/utility/shinobigami'
 import UserStore from '@/core/data/user'
+import ViewMode from '@/components/shinobi-gami/view-mode.vue'
+import draggable from 'vuedraggable'
+import { questionDialog } from '@/core/utility/dialog'
 
 export default defineComponent({
   name: 'special-arts-table',
+  components: { ViewMode, draggable },
   props: {
     sheetInfo: {
       type: Object as PropType<ShinobiGami>,
@@ -104,11 +137,42 @@ export default defineComponent({
     const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
     const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
 
+    type WrapSpecialArts = { idx: number; specialArts: SpecialArts; }
+    const makeWrapList = (): WrapSpecialArts[] => props.sheetInfo.specialArtsList.map((specialArts, idx) => ({ idx, specialArts })) || []
+    const specialArtsListWrap = ref<WrapSpecialArts[]>([])
+    watch(() => props.sheetInfo.specialArtsList, () => {
+      specialArtsListWrap.value = makeWrapList()
+    }, { deep: true, immediate: true })
+
+    const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
+
+    const onDelete = async (idx: number) => {
+      if (!(await questionDialog({
+        title: '奥義削除',
+        text: `${props.sheetInfo.specialArtsList[idx].name}を削除します。`,
+        confirmButtonText: '削除',
+        cancelButtonText: 'キャンセル'
+      }))) return
+      const specialArtsList = props.sheetInfo.specialArtsList
+      specialArtsList.splice(idx, 1)
+    }
+
+    const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
+      if (type === 'end') {
+        const specialArtsList = props.sheetInfo.specialArtsList
+        const target = specialArtsList.splice((evt.oldIndex || 1) - 1, 1)[0]
+        specialArtsList.splice((evt.newIndex || 1) - 1, 0, target)
+      }
+    }
     return {
       isRawViewMode,
       reloadSpecialArts,
       addSpecialArts,
-      skillList
+      skillList,
+      specialArtsListWrap,
+      viewMode,
+      onDelete,
+      onDrag
     }
   }
 })
@@ -116,6 +180,35 @@ export default defineComponent({
 
 <style scoped lang="scss">
 @use "../common";
+
+.ghost {
+  opacity: 0.5;
+}
+
+.v-box {
+  @include common.flex-box(column, stretch, flex-start);
+  gap: 0.5rem
+}
+
+h2:deep() {
+  &.normal {
+    width: calc(var(--sheet-font-size) * (13 + 7 + 15 + 15) + 4px + 1px);
+  }
+  &.simple {
+    width: calc(var(--sheet-font-size) * (13 + 7) + 2px + 1px);
+  }
+  &.alt {
+    width: calc(var(--sheet-font-size) * (13 + 3 + 4) + 3px + 1px);
+  }
+}
+
+.draggable-handle {
+  min-width: 3em;
+  background-color: lightgray;
+  background-image: radial-gradient(white 30%, transparent 30%);
+  background-size: 0.3em 0.3em;
+  cursor: move;
+}
 
 table.special-arts {
   border-collapse: collapse;
@@ -198,7 +291,7 @@ table.special-arts {
   }
   .name {
     white-space: nowrap;
-    width: 10em;
+    width: 13em;
   }
 
   .skill {

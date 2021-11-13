@@ -4,6 +4,7 @@
       <slot :name="definition.slotName"></slot>
     </template>
     <template v-else-if="definition.blockList">
+      <slot :name="definition.key"></slot>
       <suspense
         v-for="(block, idx) in definition.blockList"
         :key="idx"

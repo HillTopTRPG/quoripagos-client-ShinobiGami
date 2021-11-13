@@ -4,6 +4,9 @@ import { StoreData } from '@/core/utility/FileUtility'
 
 export type RoomSetting = {
   sceneKey: string | null;
+  cycle: number;
+  round: number;
+  battleField: number; // 0: 平地, 1: 水中, 2: 高所, 3: 悪天候, 4: 雑踏, 5: 極地
 }
 
 type Store = {
@@ -13,7 +16,7 @@ type Store = {
   requestData: () => Promise<void>;
 }
 
-export default makeStore<Store>('user-setting-store', () => {
+export default makeStore<Store>('room-setting-store', () => {
   const state = reactive<StoreUpdateProperties<Store, 'roomSetting'>>({
     ready: false,
     list: []
@@ -21,9 +24,12 @@ export default makeStore<Store>('user-setting-store', () => {
 
   const { requestData, insertData } = commonStoreDataProcess(
     state.list,
-    'user-setting',
+    'room-setting',
     [
-      'sceneKey'
+      'sceneKey',
+      'cycle',
+      'round',
+      'battleField'
     ]
   )
 
@@ -39,7 +45,10 @@ export default makeStore<Store>('user-setting-store', () => {
       ownerType: null,
       owner: null,
       data: {
-        sceneKey: null
+        sceneKey: null,
+        cycle: 0,
+        round: 0,
+        battleField: 0
       }
     })
     let intervalId: number | null = null

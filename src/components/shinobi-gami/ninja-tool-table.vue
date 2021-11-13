@@ -1,45 +1,80 @@
 <template>
-  <table class="ninja-tools" :class="isRawViewMode ? 'raw-view' : ''">
-    <thead>
-      <tr>
-        <th class="name">名称</th>
-        <th class="num">個数</th>
-        <th class="effect">効果</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="(t, idx) in sheetInfo.ninjaToolList" :key="idx">
-        <td class="name"><span>
-          <template v-if="isRawViewMode">{{ t.name }}</template>
-          <input type="text" v-model="t.name" v-else>
-        </span></td>
-        <td class="count"><span>
-          <template v-if="isRawViewMode">{{ t.count }}</template>
-          <input type="number" v-model="t.count" v-else>
-        </span></td>
-        <td class="effect">
-          <template v-if="isRawViewMode">{{ t.effect }}</template>
-          <textarea v-model="t.effect" v-else></textarea>
-        </td>
-      </tr>
-    </tbody>
-    <tfoot v-if="!isRawViewMode">
-      <tr>
-        <td colspan="4">
-          <button @click="addNinjaTool()">追加</button>
-        </td>
-      </tr>
-    </tfoot>
-  </table>
+  <div class="v-box">
+    <view-mode
+      v-if="mode !== 'normal'"
+      title="忍具"
+      normal-label="通常"
+      :use-simple="true"
+      simple-label="簡易"
+      alt-label="入替/削除"
+      :editable="!isRawViewMode"
+      v-model:viewMode="viewMode"
+      :use-add="!isRawViewMode"
+      @add="addNinjaTool()"
+    />
+    <draggable
+      tag="table"
+      :list="ninjaToolListWrap"
+      item-key="idx"
+      group="ninja-tools"
+      @change="onDrag('change', $event)"
+      @start="onDrag('start', $event)"
+      @end="onDrag('end', $event)"
+      ghost-class="ghost"
+      class="ninja-tools"
+      :class="[mode, isRawViewMode ? 'raw-view' : '']"
+      handle=".draggable-handle"
+    >
+      <template #header>
+        <thead>
+        <tr>
+          <th class="name">名称</th>
+          <th class="num" v-show="viewMode !== 'alt'">個数</th>
+          <th class="effect" v-show="viewMode === 'normal'">効果</th>
+          <th v-if="viewMode === 'alt'">入替</th>
+          <th class="delete-btn" v-if="viewMode === 'alt'">削除</th>
+        </tr>
+        </thead>
+      </template>
+      <template #item="{element}">
+        <tbody>
+        <tr>
+          <td class="name">
+            <span>
+              <template v-if="isRawViewMode">{{ element.ninjaTool.name }}</template>
+              <input type="text" v-model="element.ninjaTool.name" v-else>
+            </span>
+          </td>
+          <td class="count" v-show="viewMode !== 'alt'">
+            <span>
+              <template v-if="isRawViewMode">{{ element.ninjaTool.count }}</template>
+              <input type="number" v-model="element.ninjaTool.count" v-else>
+            </span>
+          </td>
+          <td class="effect" v-show="viewMode === 'normal'">
+            <template v-if="isRawViewMode">{{ element.ninjaTool.effect }}</template>
+            <textarea v-model="element.ninjaTool.effect" v-else></textarea>
+          </td>
+          <td v-if="viewMode === 'alt'" class="draggable-handle"></td>
+          <td v-if="viewMode === 'alt'"><button @click="onDelete(element.idx)">削除</button></td>
+        </tr>
+        </tbody>
+      </template>
+    </draggable>
+  </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType } from 'vue'
-import { ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
+import { computed, defineComponent, PropType, ref, watch } from 'vue'
+import { NinjaTool, ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
 import UserStore from '@/core/data/user'
+import ViewMode from '@/components/shinobi-gami/view-mode.vue'
+import draggable from 'vuedraggable'
+import { questionDialog } from '@/core/utility/dialog'
 
 export default defineComponent({
   name: 'ninja-tool-table',
+  components: { ViewMode, draggable },
   props: {
     sheetInfo: {
       type: Object as PropType<ShinobiGami>,
@@ -90,10 +125,42 @@ export default defineComponent({
     const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
     const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
 
+    type WrapNinjaTool = { idx: number; ninjaTool: NinjaTool; }
+    const makeWrapList = (): WrapNinjaTool[] => props.sheetInfo.ninjaToolList.map((ninjaTool, idx) => ({ idx, ninjaTool })) || []
+    const ninjaToolListWrap = ref<WrapNinjaTool[]>([])
+    watch(() => props.sheetInfo.ninjaToolList, () => {
+      ninjaToolListWrap.value = makeWrapList()
+    }, { deep: true, immediate: true })
+
+    const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
+
+    const onDelete = async (idx: number) => {
+      if (!(await questionDialog({
+        title: '忍具削除',
+        text: `${props.sheetInfo.ninjaToolList[idx].name}を削除します。`,
+        confirmButtonText: '削除',
+        cancelButtonText: 'キャンセル'
+      }))) return
+      const ninjaToolList = props.sheetInfo.ninjaToolList
+      ninjaToolList.splice(idx, 1)
+    }
+
+    const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
+      if (type === 'end') {
+        const ninjaToolList = props.sheetInfo.ninjaToolList
+        const target = ninjaToolList.splice((evt.oldIndex || 1) - 1, 1)[0]
+        ninjaToolList.splice((evt.newIndex || 1) - 1, 0, target)
+      }
+    }
+
     return {
       isRawViewMode,
       reloadNinjaTool,
-      addNinjaTool
+      addNinjaTool,
+      ninjaToolListWrap,
+      viewMode,
+      onDelete,
+      onDrag
     }
   }
 })
@@ -101,6 +168,35 @@ export default defineComponent({
 
 <style scoped lang="scss">
 @use "../common";
+
+.ghost {
+  opacity: 0.5;
+}
+
+.v-box {
+  @include common.flex-box(column, stretch, flex-start);
+  gap: 0.5rem
+}
+
+h2:deep() {
+  &.normal {
+    width: calc(var(--sheet-font-size) * (13 + 5 + 15) + 3px + 1px);
+  }
+  &.simple {
+    width: calc(var(--sheet-font-size) * (13 + 5) + 2px + 1px);
+  }
+  &.alt {
+    width: calc(var(--sheet-font-size) * (13 + 3 + 4) + 3px + 1px);
+  }
+}
+
+.draggable-handle {
+  min-width: 3em;
+  background-color: lightgray;
+  background-image: radial-gradient(white 30%, transparent 30%);
+  background-size: 0.3em 0.3em;
+  cursor: move;
+}
 
 table.ninja-tools {
   border-collapse: collapse;
@@ -183,7 +279,11 @@ table.ninja-tools {
   }
   .name {
     white-space: nowrap;
-    width: 10em;
+    width: 13em;
+  }
+
+  .num {
+    width: 5em;
   }
 
   td.effect {

@@ -194,8 +194,8 @@ export default defineComponent({
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 200;
   pointer-events: none;
+  z-index: 2147483646;
 
   &.open {
     backdrop-filter: blur(1px);

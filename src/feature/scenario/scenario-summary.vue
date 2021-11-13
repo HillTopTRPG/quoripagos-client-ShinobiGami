@@ -4,7 +4,7 @@
     :use-simple="isGm"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
-    :alt-label="isGm ? '削除／入替' : '簡易'"
+    :alt-label="isGm ? '入替/削除' : '簡易'"
     :editable="true"
     v-model:viewMode="viewMode"
     :use-add="true"

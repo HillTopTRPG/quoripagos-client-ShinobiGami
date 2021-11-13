@@ -178,6 +178,7 @@ export function getSlotNameList(data: SlotUnionInfo): string[] {
       resultList.push(
         ...data.blockList.flatMap((block: SlotUnionInfo) => getSlotNameList(block))
       )
+      resultList.push(data.key)
     }
   } else if (data.layout === 'tab') {
     data.tabList.forEach(tab => {
@@ -408,6 +409,7 @@ export default defineComponent({
   left: 0;
   bottom: 0;
   right: 0;
+  z-index: 2147483647;
   pointer-events: none;
 
   &.active {
@@ -425,10 +427,10 @@ export default defineComponent({
 
 .bar {
   position: absolute;
-  //background-color: rgba(0, 0, 0, 0);
   background-color: #495478;
   cursor: pointer;
   user-select: none;
+  z-index: 2147483645;
   animation-name: fade-in;
   animation-fill-mode: none;
   animation-duration: 1s;

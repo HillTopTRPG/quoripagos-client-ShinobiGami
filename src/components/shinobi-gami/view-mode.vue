@@ -1,18 +1,17 @@
 <template>
-  <h2>
+  <h2 :class="viewMode">
     <span>{{ title }}</span>
     <span class="view-mode">
-      表示モード
       <label>
-        <input type="radio" :name="`view-mode-${title}`" value="normal" :checked="'normal' === viewMode" @change="$emit('update:viewMode', $event.target.value)">
+        <input type="radio" :name="`view-mode-${elmId}`" value="normal" :checked="'normal' === viewMode" @change="$emit('update:viewMode', $event.target.value)">
         <span>{{ normalLabel }}</span>
       </label>
       <label v-if="useSimple">
-        <input type="radio" :name="`view-mode-${title}`" value="simple" :checked="'simple' === viewMode" @change="$emit('update:viewMode', $event.target.value)">
+        <input type="radio" :name="`view-mode-${elmId}`" value="simple" :checked="'simple' === viewMode" @change="$emit('update:viewMode', $event.target.value)">
         <span>{{ simpleLabel }}</span>
       </label>
       <label v-if="editable">
-        <input type="radio" :name="`view-mode-${title}`" value="alt" :checked="'alt' === viewMode" @change="$emit('update:viewMode', $event.target.value)">
+        <input type="radio" :name="`view-mode-${elmId}`" value="alt" :checked="'alt' === viewMode" @change="$emit('update:viewMode', $event.target.value)">
         <span>{{ altLabel }}</span>
       </label>
     </span>
@@ -22,6 +21,7 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from 'vue'
+import { v4 as uuidV4 } from 'uuid'
 
 export default defineComponent({
   name: 'view-mode',
@@ -58,6 +58,12 @@ export default defineComponent({
       type: String,
       required: true
     }
+  },
+  setup() {
+    const elmId = uuidV4()
+    return {
+      elmId
+    }
   }
 })
 </script>
@@ -67,12 +73,36 @@ export default defineComponent({
 
 h2 {
   @include common.flex-box(row, flex-start, center);
-  border-bottom: gold 3px solid;
-  border-left: gold 5px solid;
-  padding-left: 0.3rem;
+  position:relative;
+  padding-left: 10px;
   margin: 0;
   box-sizing: border-box;
   width: 100%;
+  font-size: calc(var(--sheet-font-size) * 1.2);
+
+  &:before{
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 3px;
+    height: 15px;
+    width: 3px;
+    display: block;
+    background: #252525;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3) inset;
+  }
+
+  &:after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    height: 3px;
+    width: 13px;
+    display: block;
+    background: #252525;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3) inset;
+  }
 
   > :first-child {
     flex: 1;
@@ -80,13 +110,17 @@ h2 {
   }
 
   > :not(:first-child) {
-    margin-right: 0.5rem;
+    margin-right: 0.2rem;
   }
+}
+
+button {
+  font-size: var(--sheet-font-size);
 }
 
 .view-mode {
   @include common.flex-box(row, flex-start, center);
-  font-size: 1rem;
+  font-size: var(--sheet-font-size);
   background-color: white;
   padding: 0.1rem;
   font-weight: normal;
@@ -102,7 +136,7 @@ h2 {
   }
   input:checked ~ span {
     border: gray 1px solid;
-    background-color: darkblue;
+    background-color: #252525;
     color: white;
     font-weight: bold;
   }

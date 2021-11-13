@@ -1,33 +1,35 @@
 <template>
-  <view-mode
-    title="NPC"
-    :use-simple="isGm"
-    :normal-label="isGm ? '通常' : '詳細'"
-    :simple-label="'簡易'"
-    :alt-label="isGm ? '削除／入替' : '簡易'"
-    :editable="mode === 'scenario'"
-    v-model:viewMode="viewMode"
-    :use-add="true"
-    @add="onAdd()"
-  />
-  <draggable
-    :list="npcListWrap"
-    item-key="idx"
-    group="npc"
-    @change="onDrag('change', $event)"
-    @start="onDrag('start', $event)"
-    @end="onDrag('end', $event)"
-    ghost-class="ghost"
-    class="draggable-container"
-    handle=".grip-line"
-  >
-    <template #item="{element}">
-      <div class="pc-block">
-        <div class="grip-line" v-show="isGm && viewMode === 'alt'">
-          <button @click="onDelete(element.idx)">削除</button>
-        </div>
-        <table class="npc" v-if="isGm || npcListWrap.some(n => !n.npc.secretcheck)">
-          <tbody>
+  <div class="v-box">
+    <view-mode
+      title="NPC"
+      :class="mode"
+      :use-simple="isGm"
+      :normal-label="isGm ? '通常' : '詳細'"
+      :simple-label="'簡易'"
+      :alt-label="isGm ? '入替/削除' : '簡易'"
+      :editable="mode === 'scenario'"
+      v-model:viewMode="viewMode"
+      :use-add="true"
+      @add="onAdd()"
+    />
+    <draggable
+      :list="npcListWrap"
+      item-key="idx"
+      group="npc"
+      @change="onDrag('change', $event)"
+      @start="onDrag('start', $event)"
+      @end="onDrag('end', $event)"
+      ghost-class="ghost"
+      class="draggable-container"
+      handle=".grip-line"
+    >
+      <template #item="{element}">
+        <div class="pc-block">
+          <div class="grip-line" v-show="isGm && viewMode === 'alt'">
+            <button @click="onDelete(element.idx)">削除</button>
+          </div>
+          <table class="npc" v-if="isGm || npcListWrap.some(n => !n.npc.secretcheck)">
+            <tbody>
             <template v-if="isGm || !element.npc.secretcheck">
               <tr>
                 <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-name` : ''">NPC</label></th>
@@ -111,11 +113,12 @@
                 </td>
               </tr>
             </template>
-          </tbody>
-        </table>
-      </div>
-    </template>
-  </draggable>
+            </tbody>
+          </table>
+        </div>
+      </template>
+    </draggable>
+  </div>
 </template>
 
 <script lang="ts">
@@ -238,6 +241,17 @@ export default defineComponent({
 .draggable-container {
   @include common.flex-box(column, flex-start, flex-start);
   gap: 0.5em;
+}
+
+.v-box {
+  @include common.flex-box(column, stretch, flex-start);
+  gap: 0.5rem
+}
+
+h2:deep() {
+  &.character {
+    width: calc(var(--sheet-font-size) * 45);
+  }
 }
 
 .h-box {

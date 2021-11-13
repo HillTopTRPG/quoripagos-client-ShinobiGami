@@ -1,55 +1,90 @@
 <template>
-  <table class="background" :class="isRawViewMode ? 'raw-view' : ''">
-    <thead>
-      <tr>
-        <th class="name">名称</th>
-        <th class="type">種別</th>
-        <th class="point">功績点</th>
-        <th class="effect">効果</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="(bg, idx) in sheetInfo.backgroundList" :key="idx">
-        <td class="name"><span>
-          <template v-if="isRawViewMode">{{ bg.name }}</template>
-          <input v-else type="text" v-model="bg.name">
-        </span></td>
-        <td class="type">
-          <span>
-            <template v-if="isRawViewMode">{{ bg.type }}</template>
-            <select v-model="bg.type" v-else>
-              <option value="長所">長所</option>
-              <option value="弱点">弱点</option>
-            </select>
-          </span>
-        </td>
-        <td class="point"><span>
-          <template v-if="isRawViewMode">{{ bg.point }}</template>
-          <input type="text" v-model="bg.point" v-else>
-        </span></td>
-        <td class="effect">
-          <template v-if="isRawViewMode">{{ bg.effect }}</template>
-          <textarea v-model="bg.effect" v-else></textarea>
-        </td>
-      </tr>
-    </tbody>
-    <tfoot v-if="!isRawViewMode">
-      <tr>
-        <td colspan="4">
-          <button @click="addBackground()">追加</button>
-        </td>
-      </tr>
-    </tfoot>
-  </table>
+  <div class="v-box">
+    <view-mode
+      v-if="mode !== 'normal'"
+      title="背景"
+      normal-label="通常"
+      :use-simple="true"
+      simple-label="簡易"
+      alt-label="入替/削除"
+      :editable="!isRawViewMode"
+      v-model:viewMode="viewMode"
+      :use-add="!isRawViewMode"
+      @add="addBackground()"
+    />
+    <draggable
+      tag="table"
+      :list="backgroundListWrap"
+      item-key="idx"
+      group="background"
+      @change="onDrag('change', $event)"
+      @start="onDrag('start', $event)"
+      @end="onDrag('end', $event)"
+      ghost-class="ghost"
+      class="background"
+      :class="[mode, isRawViewMode ? 'raw-view' : '']"
+      handle=".draggable-handle"
+    >
+      <template #header>
+        <thead>
+        <tr>
+          <th class="name">名称</th>
+          <th class="type" v-show="viewMode !== 'alt'">種別</th>
+          <th class="point" v-show="viewMode !== 'alt'">功績点</th>
+          <th class="effect" v-show="viewMode === 'normal'">効果</th>
+          <th v-if="viewMode === 'alt'">入替</th>
+          <th class="delete-btn" v-if="viewMode === 'alt'">削除</th>
+        </tr>
+        </thead>
+      </template>
+      <template #item="{element}">
+        <tbody>
+        <tr>
+          <td class="name">
+            <span>
+              <template v-if="isRawViewMode">{{ element.background.name }}</template>
+              <input v-else type="text" v-model="element.background.name">
+            </span>
+          </td>
+          <td class="type" v-show="viewMode !== 'alt'">
+            <span>
+              <template v-if="isRawViewMode">{{ element.background.type }}</template>
+              <select v-model="element.background.type" v-else>
+                <option value="長所">長所</option>
+                <option value="弱点">弱点</option>
+              </select>
+            </span>
+          </td>
+          <td class="point" v-show="viewMode !== 'alt'">
+            <span>
+              <template v-if="isRawViewMode">{{ element.background.point }}</template>
+              <input type="text" v-model="element.background.point" v-else>
+            </span>
+          </td>
+          <td class="effect" v-show="viewMode === 'normal'">
+            <template v-if="isRawViewMode">{{ element.background.effect }}</template>
+            <textarea v-model="element.background.effect" v-else></textarea>
+          </td>
+          <td v-if="viewMode === 'alt'" class="draggable-handle"></td>
+          <td v-if="viewMode === 'alt'"><button @click="onDelete(element.idx)">削除</button></td>
+        </tr>
+        </tbody>
+      </template>
+    </draggable>
+  </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType } from 'vue'
-import { ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
+import { computed, defineComponent, PropType, ref, watch } from 'vue'
+import { Background, ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
 import UserStore from '@/core/data/user'
+import ViewMode from '@/components/shinobi-gami/view-mode.vue'
+import draggable from 'vuedraggable'
+import { questionDialog } from '@/core/utility/dialog'
 
 export default defineComponent({
   name: 'background-table',
+  components: { ViewMode, draggable },
   props: {
     mode: {
       type: String as PropType<'update' | 'insert'>,
@@ -102,10 +137,42 @@ export default defineComponent({
     const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
     const isRawViewMode = computed(() => props.mode !== 'insert' && !isGm.value && !isOwn.value)
 
+    type WrapBackground = { idx: number; background: Background; }
+    const makeWrapList = (): WrapBackground[] => props.sheetInfo.backgroundList.map((background, idx) => ({ idx, background })) || []
+    const backgroundListWrap = ref<WrapBackground[]>([])
+    watch(() => props.sheetInfo.backgroundList, () => {
+      backgroundListWrap.value = makeWrapList()
+    }, { deep: true, immediate: true })
+
+    const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
+
+    const onDelete = async (idx: number) => {
+      if (!(await questionDialog({
+        title: '背景削除',
+        text: `${props.sheetInfo.backgroundList[idx].name}を削除します。`,
+        confirmButtonText: '削除',
+        cancelButtonText: 'キャンセル'
+      }))) return
+      const backgroundList = props.sheetInfo.backgroundList
+      backgroundList.splice(idx, 1)
+    }
+
+    const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
+      if (type === 'end') {
+        const backgroundList = props.sheetInfo.backgroundList
+        const target = backgroundList.splice((evt.oldIndex || 1) - 1, 1)[0]
+        backgroundList.splice((evt.newIndex || 1) - 1, 0, target)
+      }
+    }
+
     return {
       isRawViewMode,
       reloadBackground,
-      addBackground
+      addBackground,
+      backgroundListWrap,
+      viewMode,
+      onDelete,
+      onDrag
     }
   }
 })
@@ -113,6 +180,35 @@ export default defineComponent({
 
 <style scoped lang="scss">
 @use "../common";
+
+.ghost {
+  opacity: 0.5;
+}
+
+.v-box {
+  @include common.flex-box(column, stretch, flex-start);
+  gap: 0.5rem
+}
+
+h2:deep() {
+  &.normal {
+    width: calc(var(--sheet-font-size) * (13 + 4 + 4 + 15) + 4px + 1px);
+  }
+  &.simple {
+    width: calc(var(--sheet-font-size) * (13 + 4 + 4) + 3px + 1px);
+  }
+  &.alt {
+    width: calc(var(--sheet-font-size) * (13 + 3 + 4) + 3px + 1px);
+  }
+}
+
+.draggable-handle {
+  min-width: 3em;
+  background-color: lightgray;
+  background-image: radial-gradient(white 30%, transparent 30%);
+  background-size: 0.3em 0.3em;
+  cursor: move;
+}
 
 table.background {
   border-collapse: collapse;
@@ -197,12 +293,12 @@ table.background {
 
   .name {
     white-space: nowrap;
-    width: 10em;
+    width: 13em;
   }
 
   .type {
     white-space: nowrap;
-    width: 5em;
+    width: 4em;
   }
 
   .point {
