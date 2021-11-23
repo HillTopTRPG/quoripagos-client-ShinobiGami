@@ -82,32 +82,25 @@
         <velocity-column />
       </template>
       <template #right-box>
-        <template v-if="isGm">
-          <template v-for="(c, idx) in npcList" :key="`${c.name}-${idx}`">
-            <character-detail-view
-              :character="c"
-              :character-key="c.name"
-              v-if="c.sheetInfo"
-              :url="c.sheetInfo.url"
-            />
-          </template>
-        </template>
-        <template v-for="c in characterList" :key="c.key">
+        <template v-for="d in pcList" :key="d._characterKey">
           <character-detail-view
-            :character="c.data"
-            :character-key="c.key"
-            :url="c.data?.sheetInfo.url"
+            type="pc"
+            :target="d._characterKey"
           />
         </template>
-        <template v-if="!isGm">
-          <template v-for="(c, idx) in npcList" :key="`${c.name}-${idx}`">
-            <character-detail-view
-              :character="c"
-              :character-key="c.name"
-              v-if="c.sheetInfo && !c.secretcheck && isOpen(c.sheetOpenList)"
-              :url="c.sheetInfo.url"
-            />
-          </template>
+        <template v-for="d in npcList" :key="d._characterKey">
+          <character-detail-view
+            type="npc"
+            :target="d._characterKey"
+            v-if="d._hasSheet && (isGm || !d.secretcheck && getChitStatus('npc', d._characterKey).isSheetShow)"
+          />
+        </template>
+        <template v-for="d in rightHandList" :key="d._characterKey">
+          <character-detail-view
+            type="right-hand"
+            :target="d._characterKey"
+            v-if="d._hasSheet && (isGm || !d._secretCheck && getChitStatus('right-hand', d._characterKey).isSheetShow)"
+          />
         </template>
       </template>
       <template #section-core>
@@ -167,7 +160,9 @@ export default defineComponent({
         .filter(cn => cn.name) || []
     }, { deep: true, immediate: true })
 
+    const pcList = computed(() => scenarioState.currentScenario.sheetInfo.pc)
     const npcList = computed(() => scenarioState.currentScenario.sheetInfo.npc)
+    const rightHandList = computed(() => scenarioState.currentScenario.sheetInfo.righthand)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalStyle = reactive<any>({})
@@ -262,7 +257,10 @@ export default defineComponent({
       const result: Record<string, string> = {}
       if (chat.fromType === 'character') {
         const c = characterState.characterList.find(c => c.key === chat.from)
-        result['--color'] = c?.data?.color || '#000'
+        const pc = scenarioState.currentScenario.sheetInfo.pc.find(d => d._characterKey === c?.key)
+        const npc = scenarioState.currentScenario.sheetInfo.npc.find(d => d._characterKey === c?.key)
+        const rightHand = scenarioState.currentScenario.sheetInfo.righthand.find(d => d._characterKey === c?.key)
+        result['--color'] = pc?.color || npc?.color || rightHand?.color || '#000'
       } else {
         result['--color'] = userSettingState.userSetting?.fontColor || '#000'
       }
@@ -290,8 +288,15 @@ export default defineComponent({
     const randsToPips = (chat: ChatStore, key: string): Promise<void> => {
       return new Promise<void>(resolve => {
         const style = getChatStyle(chat)
-        const character = chat.fromType === 'character' ? characterState.characterList.find(c => c.key === chat.from)?.data || null : null
-        const standImageKey = character?.standImageList.length && character?.standImageList.length > character?.currentStandImage ? character?.standImageList[character?.currentStandImage || 0] : null
+        const character = chat.fromType === 'character' ? characterState.characterList.find(c => c.key === chat.from) || null : null
+        const pc = scenarioState.currentScenario.sheetInfo.pc.find(d => d._characterKey === character?.key)
+        const npc = scenarioState.currentScenario.sheetInfo.npc.find(d => d._characterKey === character?.key)
+        const rightHand = scenarioState.currentScenario.sheetInfo.righthand.find(d => d._characterKey === character?.key)
+        const standImageList = pc?.standImageList || npc?.standImageList || rightHand?.standImageList
+        const currentStandImage = (pc?.currentStandImage !== undefined && pc?.currentStandImage) ||
+          (npc?.currentStandImage !== undefined && npc?.currentStandImage) ||
+          (rightHand?.currentStandImage !== undefined && rightHand?.currentStandImage)
+        const standImageKey = standImageList && standImageList.length > currentStandImage ? standImageList[currentStandImage || 0] : null
         const standImageUrl = mediaListState.list.find(n => n.key === standImageKey)?.data?.url || null
 
         chatHistoryList.value.unshift({
@@ -362,7 +367,9 @@ export default defineComponent({
 
     return {
       isGm,
+      pcList,
       npcList,
+      rightHandList,
       bottomHeight,
       chatHistoryList,
       onEndDiceRoll,
@@ -376,6 +383,7 @@ export default defineComponent({
       globalStyle,
       characterList,
       layoutData: reactiveLayout,
+      getChitStatus: (type: 'pc' | 'npc' | 'right-hand' | 'enigma', target: string) => scenarioState.getChitStatus(type, target, userState.selfUser?.key || ''),
       chatList,
       onEnter,
       getFromLabel,
@@ -498,7 +506,7 @@ export default defineComponent({
   box-sizing: border-box;
   display: grid;
   grid-template-rows: 1fr auto;
-  z-index: 50;
+  z-index: 40000;
 
   &.image-left {
     grid-template-columns: 40vmin 1fr 0;
@@ -583,7 +591,7 @@ export default defineComponent({
   width: common.$dice-size;
   height: common.$dice-size;
   overflow: visible;
-  z-index: 50;
+  z-index: 40000;
   transform: translateX(calc((var(--dice-count) - var(--offset) - 1) * -#{common.$dice-size}));
 
   @mixin dice-image($type, $pips) {

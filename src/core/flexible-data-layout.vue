@@ -430,7 +430,7 @@ export default defineComponent({
   background-color: #495478;
   cursor: pointer;
   user-select: none;
-  z-index: 2147483645;
+  z-index: 30000;
   animation-name: fade-in;
   animation-fill-mode: none;
   animation-duration: 1s;

@@ -67,6 +67,12 @@ export default makeStore<Store>('media-list-store', () => {
 
   const setup = async (): Promise<void> => {
     await requestData()
+    state.list.map(m => {
+      if (m.data?.urlType === 'image') {
+        const img = new Image()
+        img.src = m.data?.url
+      }
+    })
     state.ready = true
   }
   setup().then()

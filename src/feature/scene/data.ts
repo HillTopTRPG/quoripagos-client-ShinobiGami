@@ -13,7 +13,7 @@ type Store = {
   list: StoreData<Scene>[];
   currentScene: Scene | null;
   requestData: () => Promise<void>;
-  insertData: (...c: (Partial<StoreData<Scene>> & { data: Scene })[]) => Promise<void>;
+  insertData: (...c: (Partial<StoreData<Scene>> & { data: Scene })[]) => Promise<string[]>;
 }
 
 export default makeStore<Store>('scene-store', () => {

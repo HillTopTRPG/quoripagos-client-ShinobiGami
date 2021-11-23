@@ -5,11 +5,36 @@
         <div>
           <select v-model="otherCharaKey">
             <option :value="null">比較対象なし</option>
-            <template v-for="c in characterList" :key="c.key">
+            <template v-for="d in pcListWrap" :key="d.raw._characterKey">
               <option
-                v-if="c.key !== characterKey && c.data && c.data.type === 'character'"
-                :value="c.key"
-              >{{ c.data.sheetInfo.characterName }}</option>
+                v-if="d.raw._characterKey !== target"
+                :value="d.raw._characterKey"
+              >{{ d.raw.name }}（{{ d.character.sheetInfo.characterName }}）</option>
+            </template>
+            <template v-for="d in npcListWrap" :key="d.raw._characterKey">
+              <option
+                v-if="
+                  d.raw._characterKey !== target &&
+                  d.raw._hasSheet && (
+                    isGm || (
+                      !d.raw.secretcheck &&
+                      getChitStatus('npc', d.raw._characterKey).isSheetShow
+                    )
+                  )
+                "
+                :value="d.raw._characterKey"
+              >{{ d.raw.name }}</option>
+            </template>
+            <template v-for="d in rightHandListWrap" :key="d.raw._characterKey">
+              <option
+                v-if="isGm || (
+                  d.raw._characterKey !== target &&
+                  !d.raw._secretCheck &&
+                  d.raw._hasSheet &&
+                  getChitStatus('right-hand', d.raw._characterKey).isSheetShow
+                )"
+                :value="d.raw._characterKey"
+              >{{ d.raw.name }}</option>
             </template>
           </select>
         </div>
@@ -29,7 +54,7 @@
               <input
                 type="checkbox"
                 :checked="skill?.spaceList.some(n => n === col)"
-                v-if="isRawViewMode"
+                v-if="isRawViewMode || operationType === 'judge'"
                 @click.prevent
               >
               <input
@@ -47,7 +72,7 @@
               <input
                 type="checkbox"
                 :checked="skill?.damagedColList.some(n => n === col)"
-                v-if="isRawViewMode"
+                v-if="isRawViewMode || operationType === 'judge'"
                 @click.prevent
               >
               <input
@@ -93,7 +118,7 @@
             <input
               type="checkbox"
               :checked="skill?.outRow"
-              v-if="isRawViewMode"
+              v-if="isRawViewMode || operationType === 'judge'"
               @click.prevent
             >
             <input
@@ -117,24 +142,24 @@ import { HtmlEvent } from '@/core/utility/typescript'
 import { SaikoroFictionTokugi } from '@/core/utility/SaikoroFiction'
 import CharacterStore from '@/feature/character/data'
 import SpecialInputStore from '@/feature/special-input/data'
-import { makeComputedObject } from '@/core/utility/vue3'
 import { calcTargetValue, getRowCol } from '@/core/utility/TrpgSystemFasade'
 import UserStore from '@/core/data/user'
+import ScenarioStore from '@/feature/scenario/data'
 
 export default defineComponent({
   name: 'skill-table',
   props: {
+    type: {
+      type: String as PropType<'pc' | 'npc' | 'right-hand'>,
+      required: true
+    },
+    target: {
+      type: String,
+      default: null
+    },
     mode: {
       type: String as PropType<'normal' | 'comparison' | 'update' | 'insert'>,
       require: true
-    },
-    sheetInfo: {
-      type: Object as PropType<ShinobiGami>,
-      required: true
-    },
-    characterKey: {
-      type: String,
-      default: null
     },
     targetSkill: {
       type: String,
@@ -151,6 +176,33 @@ export default defineComponent({
   },
   emits: ['update:otherCharacterKey', 'update:targetSkill', 'clear-arts'],
   setup(props, { emit }) {
+    const scenarioState = ScenarioStore.injector()
+    const characterState = CharacterStore.injector()
+    const userState = UserStore.injector()
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+
+    const sheetInfoWrap = ref<ShinobiGami | null>(null)
+    watch(() => characterState.characterList.find(c => c.key === props.target)?.data?.sheetInfo, (data) => {
+      sheetInfoWrap.value = data || null
+    }, { immediate: true, deep: true })
+
+    const isRawViewMode = ref(false)
+    watch([
+      () => props.type,
+      () => props.target,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
+    ], () => {
+      const { isOwn } = scenarioState.getChitStatus(
+        props.type,
+        props.target,
+        userState.selfUser?.key || null
+      )
+      isRawViewMode.value = props.mode === 'update' && (!isGm.value && !isOwn)
+    }, { immediate: true, deep: true })
+
     const specialInputState = SpecialInputStore.injector()
     // 特技表
     const skill = ref<SaikoroFictionTokugi | null>(null)
@@ -171,17 +223,19 @@ export default defineComponent({
       targetNinjaArts.value = props.targetArts
     })
 
-    // 外部の変更を取り込む
-    const characterState = CharacterStore.injector()
     const otherCharaKey = ref<string | null>(props.otherCharacterKey)
     watch(
       props.mode === 'comparison'
-        ? [() => props.sheetInfo.skill, () => characterState.characterList, otherCharaKey]
-        : () => props.sheetInfo.skill,
+        ? [
+          () => sheetInfoWrap.value?.skill,
+          () => characterState.characterList,
+          otherCharaKey
+        ]
+        : () => sheetInfoWrap.value?.skill,
       () => {
         skill.value = props.mode === 'comparison'
           ? characterState.characterList.find(c => c.key === otherCharaKey.value)?.data?.sheetInfo.skill || null
-          : props.sheetInfo.skill || null
+          : sheetInfoWrap.value?.skill || null
         if (props.mode === 'normal') onChangeSelectedSkill(props.targetSkill)
       },
       { immediate: true, deep: true }
@@ -231,10 +285,10 @@ export default defineComponent({
     })
     const onClickTargetValue = (info: { name: string; targetValue: number; }) => {
       specialInputState.setUseSkill(info.name)
-      specialInputState.from.key = props.characterKey
+      specialInputState.from.key = props.target
       specialInputState.setNinjaArts(targetNinjaArts.value)
       specialInputState.setTargetSkill(selectedSkill.value)
-      specialInputState.from.key = props.characterKey
+      specialInputState.from.key = props.target
       specialInputState.setCmdType('SG')
     }
 
@@ -244,12 +298,12 @@ export default defineComponent({
       }
     }
 
-    const userState = UserStore.injector()
-    const isGm = computed(() => userState.selfUser?.type === 'gm')
-    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
-    const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
-
     const onClickSkillName = (name: string): void => {
+      console.log(name)
+      console.log(isRawViewMode.value)
+      console.log(operationType.value === 'input')
+      console.log(skill.value?.learnedList)
+      console.log(selectedSkill.value)
       if (isRawViewMode.value) return
       if (!skill.value) return
       const { r, c } = getRowCol(name)
@@ -261,19 +315,29 @@ export default defineComponent({
       } else {
         selectedSkill.value = selectedSkill.value === name ? null : name
       }
+      console.log(selectedSkill.value)
       if (targetNinjaArts.value) emit('clear-arts')
     }
 
+    const {
+      pcListWrap,
+      npcListWrap,
+      rightHandListWrap
+    } = scenarioState.makeWrapLists()
+
     return {
-      isRawViewMode,
       isGm,
-      isOwn,
+      isRawViewMode,
       otherCharaKey,
       targetValueList,
       selectedSkill,
       skill,
       operationType,
-      ...makeComputedObject(characterState),
+      pcListWrap,
+      npcListWrap,
+      rightHandListWrap,
+      getChitStatus: (type: 'pc' | 'npc' | 'right-hand' | 'enigma', target: string) => scenarioState.getChitStatus(type, target, userState.selfUser?.key || ''),
+      // ...makeComputedObject(characterState),
       skillColumnList: [['　', '器術'], ['A', '体術'], ['B', '忍術'], ['C', '謀術'], ['D', '戦術'], ['E', '妖術']],
       SkillTable,
       onChangeGapHead,

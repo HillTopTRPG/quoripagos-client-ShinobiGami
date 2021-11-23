@@ -1,124 +1,112 @@
 <template>
-  <div class="v-box">
-    <view-mode
-      title="NPC"
-      :class="mode"
-      :use-simple="isGm"
-      :normal-label="isGm ? '通常' : '詳細'"
-      :simple-label="'簡易'"
-      :alt-label="isGm ? '入替/削除' : '簡易'"
-      :editable="mode === 'scenario'"
-      v-model:viewMode="viewMode"
-      :use-add="true"
-      @add="onAdd()"
-    />
-    <draggable
-      :list="npcListWrap"
-      item-key="idx"
-      group="npc"
-      @change="onDrag('change', $event)"
-      @start="onDrag('start', $event)"
-      @end="onDrag('end', $event)"
-      ghost-class="ghost"
-      class="draggable-container"
-      handle=".grip-line"
-    >
-      <template #item="{element}">
-        <div class="pc-block">
-          <div class="grip-line" v-show="isGm && viewMode === 'alt'">
-            <button @click="onDelete(element.idx)">削除</button>
-          </div>
-          <table class="npc" v-if="isGm || npcListWrap.some(n => !n.npc.secretcheck)">
-            <tbody>
-            <template v-if="isGm || !element.npc.secretcheck">
-              <tr>
-                <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-name` : ''">NPC</label></th>
-                <td class="name">
-                  <input type="text" :id="`npc-${element.idx}-name`" v-if="isGm && mode === 'scenario'" v-model="element.npc.name">
-                  <template v-else>{{ element.npc.name }}</template>
-                </td>
-                <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-recommend` : ''">概要</label></th>
-                <td class="recommend">
-                  <input type="text" :id="`npc-${element.idx}-recommend`" v-if="isGm && mode === 'scenario'" v-model="element.npc.recommend">
-                  <template v-else>{{ element.npc.recommend }}</template>
-                </td>
-              </tr>
-              <tr v-show="viewMode === 'normal'">
-                <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-intro` : ''">設定</label></th>
-                <td class="intro" colspan="3">
-                  <textarea :id="`npc-${element.idx}-intro`" v-if="isGm && mode === 'scenario'" v-model="element.npc.intro"></textarea>
-                  <template>{{ element.npc.intro }}</template>
-                </td>
-              </tr>
-              <tr v-show="viewMode !== 'alt'">
-                <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-mission` : ''">使命</label></th>
-                <td class="mission">
-                  <input type="text" :id="`npc-${element.idx}-mission`" v-if="isGm && mode === 'scenario'" v-model="element.npc.mission">
-                  <template v-else>{{ element.npc.mission }}</template>
-                </td>
-                <th><label :for="isGm ? `npc-${element.idx}-secretcheck` : ''">秘匿</label></th>
-                <td class="secret-check">
-                  <input type="checkbox" :id="`npc-${element.idx}-secretcheck`" v-if="isGm" v-model="element.npc.secretcheck">
-                  <input type="checkbox" v-else :checked="element.npc.secretcheck" @click.prevent>
-                </td>
-              </tr>
-              <tr v-show="viewMode === 'normal'">
-                <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-secret` : ''">秘密</label></th>
-                <td class="secret" colspan="3">
-                  <textarea :id="`npc-${element.idx}-secret`" v-if="isGm && mode === 'scenario'" v-model="element.npc.secret"></textarea>
-                  <template v-else>
-                    <template v-if="isOpen(element.npc.openList) || isGm">{{ element.npc.secret }}</template>
-                  </template>
-                </td>
-              </tr>
-              <tr v-show="viewMode === 'normal'">
-                <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-url` : ''">URL</label></th>
-                <td class="url" colspan="3">
-                  <input type="text" :id="`npc-${element.idx}-url`" v-if="isGm && mode === 'scenario'" v-model="element.npc.url" placeholder="キャラクターシート倉庫URL">
-                  <template v-else>
-                    <a v-if="(isOpen(element.npc.sheetOpenList) || isGm) && element.npc.sheetInfo && element.npc.sheetInfo.characterName" :href="element.npc.url" target="_blank" rel="noopener noreferrer">{{ element.npc.sheetInfo.characterName }}</a>
-                  </template>
-                </td>
-              </tr>
-              <tr v-if="isGm && mode === 'scenario'" v-show="viewMode === 'normal'">
-                <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-sheetViewPass` : ''">秘匿情報閲覧パス</label></th>
-                <td class="sheet-view-pass">
-                  <div class="h-box">
-                    <input type="text" :id="`npc-${element.idx}-sheetViewPass`" v-model="element.npc.sheetViewPass">
-                    <button @click="onReadNpcSheet(element.npc.name)" :disabled="!element.npc.url.trim()">読込</button>
-                  </div>
-                </td>
-                <th>リンク</th>
-                <td class="npc-link">
-                  <a v-if="element.npc.sheetInfo && element.npc.sheetInfo.characterName" :href="element.npc.sheetInfo.url" target="_blank" rel="noopener noreferrer">{{ element.npc.sheetInfo.characterName }}</a>
-                </td>
-              </tr>
-              <tr v-if="!element.npc.secretcheck && isGm" v-show="viewMode !== 'alt'">
-                <th>キャラシ閲覧</th>
-                <td class="secret-owner" colspan="3">
-                  <label v-for="c in characterList" :key="c.key">
-                    <input type="checkbox" :checked="element.npc.sheetOpenList?.some(o => o === c.key)" @change.prevent="$event.target.checked ? element.npc.sheetOpenList.push(c.key) : removeFilter(element.npc.sheetOpenList, i => i === c.key)">
-                    <span>{{ c.data?.sheetInfo.characterName }}</span>
-                  </label>
-                </td>
-              </tr>
-              <tr v-if="!element.npc.secretcheck" v-show="viewMode !== 'alt'">
-                <th>秘密保有</th>
-                <td class="secret-owner" colspan="3">
-                  <label v-for="c in characterList" :key="c.key">
-                    <input type="checkbox" v-if="isGm" :checked="element.npc.openList?.some(o => o === c.key)" @change.prevent="$event.target.checked ? element.npc.openList.push(c.key) : removeFilter(element.npc.openList, i => i === c.key)">
-                    <input type="checkbox" v-else :checked="element.npc.openList?.some(o => o === c.key)" @click.prevent>
-                    <span>{{ c.data?.sheetInfo.characterName }}</span>
-                  </label>
-                </td>
-              </tr>
-            </template>
-            </tbody>
-          </table>
+  <view-mode
+    title="NPC"
+    :class="mode"
+    :use-simple="true"
+    :normal-label="isGm ? '通常' : '詳細'"
+    :simple-label="'簡易'"
+    :alt-label="isGm ? '入替/削除' : '簡易'"
+    :editable="mode === 'scenario'"
+    v-model:viewMode="viewMode"
+    :use-add="isGm"
+    @add="onAdd()"
+  />
+  <draggable
+    :list="npcListWrap"
+    item-key="idx"
+    group="npc"
+    @change="onDrag('change', $event)"
+    @start="onDrag('start', $event)"
+    @end="onDrag('end', $event)"
+    ghost-class="ghost"
+    class="draggable-container"
+    handle=".grip-line"
+  >
+    <template #item="{element}">
+      <div class="pc-block">
+        <div class="grip-line" v-show="isGm && viewMode === 'alt'">
+          <button @click="onDelete(element.idx)">削除</button>
         </div>
-      </template>
-    </draggable>
-  </div>
+        <table class="npc" v-if="isGm || npcListWrap.some(n => !n.raw.secretcheck)">
+          <tbody>
+          <template v-if="isGm || !element.raw.secretcheck">
+            <tr>
+              <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-name` : ''">NPC</label></th>
+              <td class="name">
+                <input type="text" :id="`npc-${element.idx}-name`" v-if="isGm && mode === 'scenario'" v-model="element.raw.name">
+                <template v-else>{{ element.raw.name }}</template>
+              </td>
+              <th><label :for="isGm ? `npc-${element.idx}-secretcheck` : ''">秘匿</label></th>
+              <td class="secret-check">
+                <input type="checkbox" :id="`npc-${element.idx}-secretcheck`" v-if="isGm" v-model="element.raw.secretcheck">
+                <input type="checkbox" v-else :checked="element.raw.secretcheck" @click.prevent>
+              </td>
+            </tr>
+            <tr>
+              <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-recommend` : ''">概要</label></th>
+              <td class="recommend" :colspan="isGm || getChitStatus(element.raw).isSheetShow ? 1 : 3">
+                <input type="text" :id="`npc-${element.idx}-recommend`" v-if="isGm && mode === 'scenario'" v-model="element.raw.recommend">
+                <template v-else>{{ element.raw.recommend }}</template>
+              </td>
+              <th v-if="isGm || getChitStatus(element.raw).isSheetShow"><label :for="isGm ? `npc-${element.idx}-has-sheet` : ''">キャラシ有無</label></th>
+              <td v-if="isGm || getChitStatus(element.raw).isSheetShow" class="has-sheet-check">
+                <input type="checkbox" :id="`npc-${element.idx}-has-sheet`" v-if="isGm" v-model="element.raw._hasSheet">
+                <input type="checkbox" v-else :checked="element.raw._hasSheet" @click.prevent>
+              </td>
+            </tr>
+            <tr v-show="viewMode === 'normal'">
+              <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-intro` : ''">設定</label></th>
+              <td class="intro" :colspan="3">
+                <textarea :id="`npc-${element.idx}-intro`" v-if="isGm && mode === 'scenario'" v-model="element.raw.intro"></textarea>
+                <template>{{ element.raw.intro }}</template>
+              </td>
+            </tr>
+            <tr v-show="viewMode !== 'alt'">
+              <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-mission` : ''">使命</label></th>
+              <td class="mission" :colspan="3">
+                <input type="text" :id="`npc-${element.idx}-mission`" v-if="isGm && mode === 'scenario'" v-model="element.raw.mission">
+                <template v-else>{{ element.raw.mission }}</template>
+              </td>
+            </tr>
+            <tr v-show="viewMode === 'normal'">
+              <th><label :for="isGm && mode === 'scenario' ? `npc-${element.idx}-secret` : ''">秘密</label></th>
+              <td class="secret" :colspan="3">
+                <textarea :id="`npc-${element.idx}-secret`" v-if="isGm && mode === 'scenario'" v-model="element.raw.secret"></textarea>
+                <template v-else>
+                  <template v-if="isGm || getChitStatus(element.raw).isSecretOpen">{{ element.raw.secret }}</template>
+                </template>
+              </td>
+            </tr>
+            <tr v-if="!element.raw.secretcheck && element.raw._hasSheet && isGm" v-show="viewMode !== 'alt'">
+              <th>キャラシ<br/>閲覧許可PC</th>
+              <td class="secret-owner" :colspan="3">
+                <scenario-jurisdiction-check
+                  :types="['pc']"
+                  :mode="mode"
+                  type="npc"
+                  :character-key="element.raw._characterKey"
+                  :jurisdiction-list="element.raw._sheetOpenList"
+                />
+              </td>
+            </tr>
+            <tr v-if="!element.raw.secretcheck" v-show="viewMode !== 'alt'">
+              <th>この秘密の保持者</th>
+              <td class="secret-owner" :colspan="3">
+                <scenario-jurisdiction-check
+                  :types="['pc', 'npc']"
+                  :mode="mode"
+                  type="npc"
+                  :character-key="element.raw._characterKey"
+                  :jurisdiction-list="element.raw._openList"
+                />
+              </td>
+            </tr>
+          </template>
+          </tbody>
+        </table>
+      </div>
+    </template>
+  </draggable>
 </template>
 
 <script lang="ts">
@@ -127,105 +115,88 @@ import { NPC } from '@/core/utility/shinobigamiScenario'
 import UserStore from '../../core/data/user'
 import CharacterStore from '../character/data'
 import { removeFilter } from '@/core/utility/typescript'
-import { ShinobigamiHelper } from '@/core/utility/shinobigami'
-import { errorDialog, questionDialog } from '@/core/utility/dialog'
+import { questionDialog } from '@/core/utility/dialog'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import draggable from 'vuedraggable'
+import ScenarioStore from '@/feature/scenario/data'
+import ScenarioJurisdictionCheck from '@/feature/scenario/scenario-jurisdiction-check.vue'
 
 export default defineComponent({
   name: 'scenario-npc',
-  components: { ViewMode, draggable },
+  components: { ScenarioJurisdictionCheck, ViewMode, draggable },
   props: {
     mode: {
       type: String as PropType<'scenario' | 'character'>,
       required: true
     },
-    npcName: {
+    target: {
       type: String,
       default: null
-    },
-    npcList: {
-      type: Array as PropType<NPC[]>,
-      required: true
     }
   },
   setup(props) {
+    const scenarioState = ScenarioStore.injector()
+    const npcList = scenarioState.currentScenario.sheetInfo.npc
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
 
     const characterState = CharacterStore.injector()
 
-    const onReadNpcSheet = async (npcName: string) => {
-      const npc = props.npcList.find(n => n.name === npcName)
-      if (!npc) return
-
-      const helper = new ShinobigamiHelper(npc.url, npc.sheetViewPass)
-      if (!helper.isThis()) {
-        console.log('is not this')
-        return
-      }
-      const { data: rd, jsons } = await helper.getData()
-      console.log(jsons)
-      console.log(rd)
-      if (!rd) {
-        await errorDialog({
-          title: 'Loading Error',
-          text: 'URLまたは秘匿情報閲覧パスが誤っています。'
-        })
-        return
-      }
-
-      if (npc.sheetInfo) {
-        const result = await questionDialog({
-          title: '上書き確認',
-          text: `'${npc.name}'のキャラクターシート情報を上書きしますか？`,
-          confirmButtonText: '上書き',
-          cancelButtonText: 'キャンセル'
-        })
-        if (!result) return
-      }
-      npc.sheetInfo = rd
-    }
-
-    type WrapNpc = { idx: number; npc: NPC; }
-    const makeWrapList = (): WrapNpc[] => props.npcList.filter(npc => props.npcName ? npc.name === props.npcName : true).map((npc, idx) => ({ idx, npc })) || []
-    const npcListWrap = ref<WrapNpc[]>([])
-    watch(() => props.npcList, () => {
-      npcListWrap.value = makeWrapList()
-    }, { deep: true, immediate: true })
-
     const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
 
-    const onAdd = () => {
-      console.log('emit onAdd')
+    const onAdd = async () => {
+      scenarioState.currentScenario.sheetInfo.npc.push(({
+        _type: 'npc',
+        intro: '',
+        mission: '',
+        name: '',
+        recommend: '',
+        secret: '',
+        secretcheck: true,
+        _openList: [],
+        _characterKey: await characterState.insertEmptyCharacter(),
+        _hasSheet: false,
+        _sheetOpenList: [],
+        plot: -2,
+        isFumble: false,
+        isActed: false,
+        chitImageList: [],
+        standImageList: [],
+        currentChitImage: -1,
+        currentStandImage: -1,
+        color: '#3E2723'
+      }))
     }
 
     const onDelete = async (idx: number) => {
       if (!(await questionDialog({
         title: 'NPC削除',
-        text: `${props.npcList[idx].name}を削除します。`,
+        text: `${npcList[idx].name}を削除します。`,
         confirmButtonText: '削除',
         cancelButtonText: 'キャンセル'
       }))) return
-      const npcList = props.npcList
       npcList.splice(idx, 1)
     }
 
     const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
       if (type === 'end') {
-        const npcList = props.npcList
         const target = npcList.splice(evt.oldIndex || 0, 1)[0]
         npcList.splice(evt.newIndex || 0, 0, target)
       }
     }
 
+    const {
+      npcListWrap,
+      updateNpcListWrap
+    } = scenarioState.makeWrapLists('npc', computed(() => props.target))
+    watch(() => props.target, () => updateNpcListWrap(props.target))
+
     return {
-      onReadNpcSheet,
       npcListWrap,
       isGm,
       removeFilter,
       characterList: computed(() => characterState.characterList),
-      isOpen: (openList: string[]) => userState.selfUser?.refList.some(r => openList.some(o => o === r.key)),
+      getChitStatus: (npc: NPC) => scenarioState.getChitStatus('npc', npc._characterKey, userState.selfUser?.key || null),
       viewMode,
       onAdd,
       onDelete,
@@ -243,15 +214,8 @@ export default defineComponent({
   gap: 0.5em;
 }
 
-.v-box {
-  @include common.flex-box(column, stretch, flex-start);
-  gap: 0.5rem
-}
-
 h2:deep() {
-  &.character {
-    width: calc(var(--sheet-font-size) * 45);
-  }
+  width: calc(var(--sheet-font-size) * 45);
 }
 
 .h-box {
@@ -277,6 +241,10 @@ h2:deep() {
 
 .npc-contents {
   margin-top: -1px;
+}
+
+.secret-check {
+  width: 3em;
 }
 
 table {
@@ -307,7 +275,7 @@ table {
   &.pc,
   &.npc {
     th {
-      width: 4em;
+      width: 6em;
     }
 
     .secret-owner {
@@ -322,6 +290,10 @@ table {
     width: 100%;
     height: 100%;
     @include common.flex-box(row, center, center);
+
+    &.secret-owner-label {
+      height: auto;
+    }
   }
 
   caption {

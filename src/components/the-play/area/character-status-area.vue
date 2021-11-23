@@ -1,35 +1,65 @@
 <template>
   <div class="character-status-area">
-    <template v-for="c in characterList" :key="c.key">
-      <div class="character-status" v-if="c.data">
-        <character-chit-name type="PC" :character="c.data" :view-name="true" :name="c.data.sheetInfo.characterName" />
-        <select v-model="c.data.isActed">
+    <template v-for="d in pcList" :key="d._characterKey">
+      <div class="character-status">
+        <character-chit-name
+          type="pc"
+          label="PC"
+          :target="d._characterKey"
+          :view-name="true"
+          @select="onSelectChit('pc', d._characterKey)"
+        />
+        <select v-model="d.isActed">
           <option disabled>行動</option>
           <option :value="false">未</option>
           <option :value="true">済</option>
         </select>
-        <plot-select v-model="c.data.plot" />
-        <select v-model="c.data.isFumble">
+        <plot-select v-model="d.plot" />
+        <select v-model="d.isFumble">
           <option disabled>凪</option>
           <option :value="false">通常</option>
           <option :value="true">逆凪</option>
         </select>
       </div>
     </template>
-    <template v-for="(n, idx) in npcList" :key="`${idx}-${n.name}`">
-      <div class="npc-status" v-if="isGm || !n.secretcheck">
-        <character-chit-name type="NPC" :character="n" :view-name="true" :name="n.name" />
-        <select v-if="isGm" v-model="n.secretcheck">
-          <option :value="false">公開</option>
-          <option :value="true">非公開</option>
-        </select>
-        <select v-model="n.isActed">
+    <template v-for="d in npcList" :key="d._characterKey">
+      <div class="npc-status" v-if="!d.secretcheck">
+        <character-chit-name
+          type="npc"
+          label="NPC"
+          :target="d._characterKey"
+          :view-name="true"
+          @select="onSelectChit('npc', d._characterKey)"
+        />
+        <select v-model="d.isActed">
           <option disabled>行動</option>
           <option :value="false">未</option>
           <option :value="true">済</option>
         </select>
-        <plot-select v-model="n.plot" />
-        <select v-model="n.isFumble">
+        <plot-select v-model="d.plot" />
+        <select v-model="d.isFumble">
+          <option disabled>凪</option>
+          <option :value="false">通常</option>
+          <option :value="true">逆凪</option>
+        </select>
+      </div>
+    </template>
+    <template v-for="d in rightHandList" :key="d._characterKey">
+      <div class="npc-status" v-if="!d._secretCheck">
+        <character-chit-name
+          type="right-hand"
+          label="腹心"
+          :target="d._characterKey"
+          :view-name="true"
+          @select="onSelectChit('right-hand', d._characterKey)"
+        />
+        <select v-model="d.isActed">
+          <option disabled>行動</option>
+          <option :value="false">未</option>
+          <option :value="true">済</option>
+        </select>
+        <plot-select v-model="d.plot" />
+        <select v-model="d.isFumble">
           <option disabled>凪</option>
           <option :value="false">通常</option>
           <option :value="true">逆凪</option>
@@ -38,15 +68,13 @@
     </template>
     <template v-for="(e, idx) in enigmaList" :key="`${idx}-${e.name}`">
       <div class="enigma-status">
-        <character-chit-name type="エニグマ" :character="e" :view-name="true" :name="e.name" />
-        <select v-if="isGm" v-model="e.open">
-          <option :value="false">非公開</option>
-          <option :value="true">公開</option>
-        </select>
-        <select v-else :value="e.open">
-          <option :value="false" :disabled="e.open === true">非公開</option>
-          <option :value="true" :disabled="e.open === false">公開</option>
-        </select>
+        <character-chit-name
+          type="enigma"
+          label="エニグマ"
+          :target="e.name"
+          :view-name="true"
+          @select="onSelectChit('enigma', e.name)"
+        />
       </div>
     </template>
   </div>
@@ -54,9 +82,8 @@
 
 <script lang="ts">
 import { computed, defineComponent } from 'vue'
-import CharacterStore, { CharacterBase } from '@/feature/character/data'
+import CharacterStore from '@/feature/character/data'
 import ScenarioStore from '@/feature/scenario/data'
-import MediaListStore from '@/feature/media-list/data'
 import UserStore from '@/core/data/user'
 import PlotSelect from '@/components/the-play/select/plot-select.vue'
 import CharacterChitName from '@/feature/character/character-chit-name.vue'
@@ -66,31 +93,28 @@ export default defineComponent({
   components: { CharacterChitName, PlotSelect },
   setup() {
     const characterState = CharacterStore.injector()
-    const mediaListState = MediaListStore.injector()
 
     const scenarioState = ScenarioStore.injector()
+    const pcList = computed(() => scenarioState.currentScenario.sheetInfo.pc)
     const npcList = computed(() => scenarioState.currentScenario.sheetInfo.npc)
+    const rightHandList = computed(() => scenarioState.currentScenario.sheetInfo.righthand)
     const enigmaList = computed(() => scenarioState.currentScenario.sheetInfo.enigma)
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const getStyleObj = (c: CharacterBase | undefined): any => {
-      if (!c || !c.chitImageList || !c.standImageList) return null
-      const chitImageUrl = mediaListState.list.find(m => m.key === c.chitImageList[c.currentChitImage])?.data?.url
-      const standImageUrl = mediaListState.list.find(m => m.key === c.standImageList[c.currentStandImage])?.data?.url
-      return {
-        '--color': c.color,
-        '--chit-image': chitImageUrl ? `url('${chitImageUrl}')` : '',
-        '--stand-image': standImageUrl ? `url('${standImageUrl}')` : ''
-      }
+    const onSelectChit = (type: string, target: string) => {
+      const elmId = `${type}-detail-${target}`
+      document.getElementById(elmId)?.scrollIntoView(true)
     }
 
     return {
-      getStyleObj,
       characterList: characterState.makeWrapCharacterList(),
+      pcList,
       npcList,
+      rightHandList,
       enigmaList,
+      onSelectChit,
+      getChitStatus: (type: 'pc' | 'npc' | 'right-hand' | 'enigma', target: string) => scenarioState.getChitStatus(type, target, userState.selfUser?.key || ''),
       isGm
     }
   }
@@ -99,6 +123,10 @@ export default defineComponent({
 
 <style scoped lang="scss">
 @use "../../common";
+
+.chit:deep() {
+  cursor: pointer;
+}
 
 .character-status-area {
   @include common.flex-box(row);

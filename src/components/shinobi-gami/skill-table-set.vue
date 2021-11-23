@@ -1,16 +1,16 @@
 <template>
   <div class="skill-table-set">
     <skill-table
-      :sheet-info="character.sheetInfo"
+      :type="type"
+      :target="target"
       @clearArts="onClearArts()"
       :target-arts="targetArts"
-      :character-key="characterKey"
       mode="normal"
       v-model:target-skill="targetSkillRaw"
     />
     <skill-table
-      :sheet-info="character.sheetInfo"
-      :character-key="characterKey"
+      :type="type"
+      :target="target"
       mode="comparison"
       v-model:other-character-key="otherCharaKey"
       v-model:target-skill="targetSkillRaw"
@@ -21,19 +21,18 @@
 <script lang="ts">
 import { defineComponent, PropType, ref, watch } from 'vue'
 import SkillTable from '@/components/shinobi-gami/skill-table.vue'
-import { Character } from '@/feature/character/data'
 
 export default defineComponent({
   name: 'skill-table-set',
   components: { SkillTable },
   props: {
-    character: {
-      type: Object as PropType<Character>,
+    type: {
+      type: String as PropType<'pc' | 'npc' | 'right-hand'>,
       required: true
     },
-    characterKey: {
+    target: {
       type: String,
-      required: true
+      default: null
     },
     otherCharacterKey: {
       type: String,

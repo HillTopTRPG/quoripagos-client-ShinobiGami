@@ -2,47 +2,46 @@
     <transition name="character-fade">
       <div
         class="character-detail-view"
-        :style="{ '--color': character.color }"
-        v-if="character.sheetInfo"
+        :id="elmId"
+        :style="{ '--color': scenarioData?.color }"
+        v-if="sheetInfoWrap"
       >
         <div class="header">
           <div class="main">
             <h2>
               <ruby>
-                {{ character.sheetInfo.characterName }}
+                {{ sheetInfoWrap?.characterName }}
                 <rp>（</rp>
-                <rt>{{ character.sheetInfo.characterNameKana }}</rt>
+                <rt>{{ sheetInfoWrap?.characterNameKana }}</rt>
                 <rp>）</rp>
               </ruby>
             </h2>
-            <div class="player">{{ character.sheetInfo.playerName }}</div>
+            <div class="player">{{ sheetInfoWrap?.playerName }}</div>
           </div>
           <div class="other">
-            <div class="style">{{ character.sheetInfo.upperStyle }} - {{ character.sheetInfo.subStyle || '上位流派' }} - {{ character.sheetInfo.level }}</div>
-            <div class="style-rule">{{ character.sheetInfo.stylerule }}</div>
-            <div class="personal">{{ character.sheetInfo.belief }} - {{ character.sheetInfo.cover }} - {{ character.sheetInfo.age }} - {{ character.sheetInfo.sex }}</div>
+            <div class="style">{{ sheetInfoWrap?.upperStyle }} - {{ sheetInfoWrap?.subStyle || '上位流派' }} - {{ sheetInfoWrap?.level }}</div>
+            <div class="style-rule">{{ sheetInfoWrap?.stylerule }}</div>
+            <div class="personal">{{ sheetInfoWrap?.belief }} - {{ sheetInfoWrap?.cover }} - {{ sheetInfoWrap?.age }} - {{ sheetInfoWrap?.sex }}</div>
           </div>
         </div>
         <div class="backgrounds">
-          <div class="background" v-for="(bg, idx) in character.sheetInfo.backgroundList" :key="idx">{{ bg.name }}</div>
+          <div class="background" v-for="(bg, idx) in sheetInfoWrap?.backgroundList" :key="idx">{{ bg.name }}</div>
         </div>
 
         <div class="part-wrap">
           <skill-table-set
-            :character="character"
+            :type="type"
+            :target="target"
             @clearArts="onClearArts()"
-            :target-arts="selectedNinjaArtsIndex !== null ? character.sheetInfo.ninjaArtsList[selectedNinjaArtsIndex]?.name || null : null"
-            :character-key="characterKey"
+            :target-arts="selectedNinjaArtsIndex !== null ? sheetInfoWrap?.ninjaArtsList[selectedNinjaArtsIndex]?.name || null : null"
             v-model:other-character-key="otherCharacterKey"
             v-model:target-skill="targetSkill"
           />
         </div>
         <div class="part-wrap">
           <ninja-arts-table
-            :sheet-info="character.sheetInfo"
-            :url="url"
-            :sheet-view-pass="character.sheetViewPass"
-            :character-key="characterKey"
+            :type="type"
+            :target="target"
             mode="normal"
             v-model:select-index="selectedNinjaArtsIndex"
           />
@@ -52,30 +51,56 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, ref, watch } from 'vue'
-import { CharacterBase } from '@/feature/character/data'
+import { computed, defineComponent, PropType, ref, watch } from 'vue'
+import CharacterStore from '@/feature/character/data'
 import SkillTableSet from '@/components/shinobi-gami/skill-table-set.vue'
 import NinjaArtsTable from '@/components/shinobi-gami/ninja-arts-table.vue'
-import { SkillTable } from '@/core/utility/shinobigami'
+import { ShinobiGami, SkillTable } from '@/core/utility/shinobigami'
+import { ActorBase } from '@/core/utility/shinobigamiScenario'
+import ScenarioStore from '@/feature/scenario/data'
 
 export default defineComponent({
   name: 'character-detail-view',
   components: { NinjaArtsTable, SkillTableSet },
   props: {
-    character: {
-      type: Object as PropType<CharacterBase>,
+    type: {
+      type: String as PropType<'pc' | 'npc' | 'right-hand'>,
       required: true
     },
-    characterKey: {
+    target: {
       type: String,
-      required: true
-    },
-    url: {
-      type: String,
-      required: true
+      default: null
     }
   },
   setup(props) {
+    const characterState = CharacterStore.injector()
+    const scenarioState = ScenarioStore.injector()
+    const elmId = computed(() => `${props.type}-detail-${props.target}`)
+
+    const scenarioData = ref<ActorBase | null>(null)
+    watch([
+      () => props.type,
+      () => props.target,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand
+    ], () => {
+      if (props.type === 'pc') {
+        scenarioData.value = scenarioState.currentScenario.sheetInfo.pc.find(d => d._characterKey === props.target) || null
+      } else if (props.type === 'npc') {
+        scenarioData.value = scenarioState.currentScenario.sheetInfo.npc.find(d => d._characterKey === props.target) || null
+      } else if (props.type === 'right-hand') {
+        scenarioData.value = scenarioState.currentScenario.sheetInfo.righthand.find(d => d._characterKey === props.target) || null
+      } else {
+        scenarioData.value = null
+      }
+    }, { immediate: true, deep: true })
+
+    const sheetInfoWrap = ref<ShinobiGami | null>(null)
+    watch(() => characterState.characterList.find(c => c.key === props.target)?.data?.sheetInfo, (data) => {
+      sheetInfoWrap.value = data || null
+    }, { immediate: true, deep: true })
+
     const selectedNinjaArtsIndex = ref<number | null>(null)
     const targetSkill = ref<string | null>(null)
     const otherCharacterKey = ref<string | null>(null)
@@ -85,7 +110,7 @@ export default defineComponent({
         targetSkill.value = null
         return
       }
-      const targetSkillRaw = props.character.sheetInfo?.ninjaArtsList[selectedNinjaArtsIndex.value || 0]?.targetSkill
+      const targetSkillRaw = sheetInfoWrap.value?.ninjaArtsList[selectedNinjaArtsIndex.value || 0]?.targetSkill
       if (SkillTable.flatMap(tt => tt).some(t => t === targetSkillRaw)) {
         targetSkill.value = targetSkillRaw || null
       } else {
@@ -94,6 +119,9 @@ export default defineComponent({
     })
 
     return {
+      elmId,
+      scenarioData,
+      sheetInfoWrap,
       selectedNinjaArtsIndex,
       targetSkill,
       otherCharacterKey,

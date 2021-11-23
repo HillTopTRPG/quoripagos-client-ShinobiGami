@@ -194,7 +194,7 @@ export default defineComponent({
   bottom: 0;
   width: 100vw;
   box-sizing: border-box;
-  z-index: 100;
+  z-index: 60000;
   gap: 0.3em;
   backdrop-filter: blur(10px);
 }

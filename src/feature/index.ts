@@ -18,10 +18,13 @@ import { installFeatures } from '@/core'
 const Plugin = {
   install(app: App): void {
     const features = [
-      [roomSetting],
+      [
+        roomSetting,
+        mediaList,
+        character
+      ],
       [
         battleField,
-        character,
         cutIn,
         localSetting,
         memo,
@@ -30,7 +33,6 @@ const Plugin = {
         scene,
         tag,
         userSetting,
-        mediaList,
         chatList,
         specialInput
       ]

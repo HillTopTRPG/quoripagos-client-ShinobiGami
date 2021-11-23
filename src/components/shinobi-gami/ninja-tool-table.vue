@@ -65,41 +65,63 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType, ref, watch } from 'vue'
+import { defineComponent, PropType, ref, watch } from 'vue'
 import { NinjaTool, ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
 import UserStore from '@/core/data/user'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import draggable from 'vuedraggable'
 import { questionDialog } from '@/core/utility/dialog'
+import ScenarioStore from '@/feature/scenario/data'
+import CharacterStore from '@/feature/character/data'
 
 export default defineComponent({
   name: 'ninja-tool-table',
   components: { ViewMode, draggable },
   props: {
-    sheetInfo: {
-      type: Object as PropType<ShinobiGami>,
+    type: {
+      type: String as PropType<'pc' | 'npc' | 'right-hand'>,
       required: true
+    },
+    target: {
+      type: String,
+      default: null
     },
     mode: {
       type: String as PropType<'normal' | 'view' | 'update' | 'insert'>,
       require: true
-    },
-    characterKey: {
-      type: String,
-      required: true
-    },
-    url: {
-      type: String,
-      required: true
-    },
-    sheetViewPass: {
-      type: String,
-      required: true
     }
   },
   setup(props) {
+    const scenarioState = ScenarioStore.injector()
+    const characterState = CharacterStore.injector()
+    const userState = UserStore.injector()
+
+    const sheetViewPass = ref('')
+    const sheetInfoWrap = ref<ShinobiGami | null>(null)
+    watch(() => characterState.characterList.find(c => c.key === props.target)?.data, (data) => {
+      sheetViewPass.value = data?.sheetViewPass || ''
+      sheetInfoWrap.value = data?.sheetInfo || null
+    }, { immediate: true, deep: true })
+
+    const isRawViewMode = ref(false)
+    watch([
+      () => props.type,
+      () => props.target,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
+    ], () => {
+      const { isOwn } = scenarioState.getChitStatus(
+        props.type,
+        props.target,
+        userState.selfUser?.key || null
+      )
+      isRawViewMode.value = props.mode !== 'update' || (userState.selfUser?.type !== 'gm' && !isOwn)
+    }, { immediate: true, deep: true })
+
     const reloadNinjaTool = async () => {
-      const helper = new ShinobigamiHelper(props.url, props.sheetViewPass)
+      const helper = new ShinobigamiHelper(sheetInfoWrap.value?.url || '', sheetViewPass.value)
       if (!helper.isThis()) {
         console.log('is not this')
         return
@@ -108,27 +130,22 @@ export default defineComponent({
       console.log(jsons)
       console.log(rd)
       if (!rd) return
-      const ninjaToolList = props.sheetInfo.ninjaToolList
-      ninjaToolList.splice(0, ninjaToolList.length, ...rd.ninjaToolList)
+      const ninjaToolList = sheetInfoWrap.value?.ninjaToolList
+      ninjaToolList?.splice(0, ninjaToolList?.length || 0, ...rd.ninjaToolList)
     }
     const addNinjaTool = () => {
-      const ninjaToolList = props.sheetInfo.ninjaToolList
-      ninjaToolList.push({
+      const ninjaToolList = sheetInfoWrap.value?.ninjaToolList
+      ninjaToolList?.push({
         name: '',
         count: 0,
         effect: ''
       })
     }
 
-    const userState = UserStore.injector()
-    const isGm = computed(() => userState.selfUser?.type === 'gm')
-    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
-    const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
-
     type WrapNinjaTool = { idx: number; ninjaTool: NinjaTool; }
-    const makeWrapList = (): WrapNinjaTool[] => props.sheetInfo.ninjaToolList.map((ninjaTool, idx) => ({ idx, ninjaTool })) || []
+    const makeWrapList = (): WrapNinjaTool[] => sheetInfoWrap.value?.ninjaToolList.map((ninjaTool, idx) => ({ idx, ninjaTool })) || []
     const ninjaToolListWrap = ref<WrapNinjaTool[]>([])
-    watch(() => props.sheetInfo.ninjaToolList, () => {
+    watch(() => sheetInfoWrap.value?.ninjaToolList, () => {
       ninjaToolListWrap.value = makeWrapList()
     }, { deep: true, immediate: true })
 
@@ -137,19 +154,19 @@ export default defineComponent({
     const onDelete = async (idx: number) => {
       if (!(await questionDialog({
         title: '忍具削除',
-        text: `${props.sheetInfo.ninjaToolList[idx].name}を削除します。`,
+        text: `${sheetInfoWrap.value?.ninjaToolList[idx].name || ''}を削除します。`,
         confirmButtonText: '削除',
         cancelButtonText: 'キャンセル'
       }))) return
-      const ninjaToolList = props.sheetInfo.ninjaToolList
-      ninjaToolList.splice(idx, 1)
+      const ninjaToolList = sheetInfoWrap.value?.ninjaToolList
+      ninjaToolList?.splice(idx, 1)
     }
 
     const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
       if (type === 'end') {
-        const ninjaToolList = props.sheetInfo.ninjaToolList
-        const target = ninjaToolList.splice((evt.oldIndex || 1) - 1, 1)[0]
-        ninjaToolList.splice((evt.newIndex || 1) - 1, 0, target)
+        const ninjaToolList = sheetInfoWrap.value?.ninjaToolList
+        const target = ninjaToolList?.splice((evt.oldIndex || 1) - 1, 1)[0]
+        if (target) ninjaToolList?.splice((evt.newIndex || 1) - 1, 0, target)
       }
     }
 

@@ -115,30 +115,24 @@ import { NinjaArts, ShinobiGami, ShinobigamiHelper, SkillTable } from '@/core/ut
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import draggable from 'vuedraggable'
 import { questionDialog } from '@/core/utility/dialog'
+import ScenarioStore from '@/feature/scenario/data'
+import CharacterStore from '@/feature/character/data'
 
 export default defineComponent({
   name: 'ninja-arts-table',
   components: { ViewMode, draggable },
   props: {
+    type: {
+      type: String as PropType<'pc' | 'npc' | 'right-hand'>,
+      required: true
+    },
+    target: {
+      type: String,
+      default: null
+    },
     mode: {
       type: String as PropType<'normal' | 'view' | 'update' | 'insert'>,
       require: true
-    },
-    sheetInfo: {
-      type: Object as PropType<ShinobiGami>,
-      required: true
-    },
-    url: {
-      type: String,
-      required: true
-    },
-    sheetViewPass: {
-      type: String,
-      required: true
-    },
-    characterKey: {
-      type: String,
-      required: true
     },
     selectIndex: {
       type: Number,
@@ -146,6 +140,37 @@ export default defineComponent({
     }
   },
   setup(props, { emit }) {
+    const scenarioState = ScenarioStore.injector()
+    const characterState = CharacterStore.injector()
+    const userState = UserStore.injector()
+
+    const sheetViewPass = ref('')
+    const sheetInfoWrap = ref<ShinobiGami | null>(null)
+    watch(() => characterState.characterList.find(c => c.key === props.target)?.data, (data) => {
+      sheetViewPass.value = data?.sheetViewPass || ''
+      sheetInfoWrap.value = data?.sheetInfo || null
+    }, { immediate: true, deep: true })
+
+    const isRawViewMode = ref(false)
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+    const isOwn = ref(false)
+    watch([
+      () => props.type,
+      () => props.target,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
+    ], () => {
+      const { isOwn: isOwnRaw } = scenarioState.getChitStatus(
+        props.type,
+        props.target,
+        userState.selfUser?.key || null
+      )
+      isOwn.value = isOwnRaw
+      isRawViewMode.value = props.mode !== 'update' || (!isGm.value && !isOwnRaw)
+    }, { immediate: true, deep: true })
+
     const elmId = uuidV4()
     const specialInputState = SpecialInputStore.injector()
     const currentColumn = ref('')
@@ -158,12 +183,12 @@ export default defineComponent({
     const selectedArts = computed(() => props.selectIndex)
     const onSelectArts = (index: number) => {
       emit('update:selectIndex', selectedArts.value === index ? null : index)
-      const ninjaArts = props.sheetInfo.ninjaArtsList[index]
-      specialInputState.from.key = props.characterKey
-      specialInputState.setNinjaArts(ninjaArts.name)
+      const ninjaArts = sheetInfoWrap.value?.ninjaArtsList[index]
+      specialInputState.from.key = props.target
+      specialInputState.setNinjaArts(ninjaArts?.name || null)
     }
     const reloadNinjaArts = async () => {
-      const helper = new ShinobigamiHelper(props.url, props.sheetViewPass)
+      const helper = new ShinobigamiHelper(sheetInfoWrap.value?.url || '', sheetViewPass.value)
       if (!helper.isThis()) {
         console.log('is not this')
         return
@@ -172,13 +197,13 @@ export default defineComponent({
       console.log(jsons)
       console.log(rd)
       if (!rd) return
-      const ninjaArtsList = props.sheetInfo.ninjaArtsList
-      ninjaArtsList.splice(0, props.sheetInfo.ninjaArtsList.length, ...rd.ninjaArtsList)
+      const ninjaArtsList = sheetInfoWrap.value?.ninjaArtsList
+      ninjaArtsList?.splice(0, ninjaArtsList?.length || 0, ...rd.ninjaArtsList)
     }
 
     const addNinjaArts = () => {
-      const ninjaArtsList = props.sheetInfo.ninjaArtsList
-      ninjaArtsList.push({
+      const ninjaArtsList = sheetInfoWrap.value?.ninjaArtsList
+      ninjaArtsList?.push({
         secret: false,
         name: '',
         type: '攻撃',
@@ -190,15 +215,10 @@ export default defineComponent({
       })
     }
 
-    const userState = UserStore.injector()
-    const isGm = computed(() => userState.selfUser?.type === 'gm')
-    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
-    const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
-
     type WrapNinjaArts = { idx: number; ninjaArts: NinjaArts; }
-    const makeWrapList = (): WrapNinjaArts[] => props.sheetInfo.ninjaArtsList.map((ninjaArts, idx) => ({ idx, ninjaArts })) || []
+    const makeWrapList = (): WrapNinjaArts[] => sheetInfoWrap.value?.ninjaArtsList.map((ninjaArts, idx) => ({ idx, ninjaArts })) || []
     const ninjaArtsListWrap = ref<WrapNinjaArts[]>([])
-    watch(() => props.sheetInfo.ninjaArtsList, () => {
+    watch(() => sheetInfoWrap.value?.ninjaArtsList, () => {
       ninjaArtsListWrap.value = makeWrapList()
     }, { deep: true, immediate: true })
 
@@ -207,20 +227,22 @@ export default defineComponent({
     const onDelete = async (idx: number) => {
       if (!(await questionDialog({
         title: '忍法削除',
-        text: `${props.sheetInfo.ninjaArtsList[idx].name}を削除します。`,
+        text: `${sheetInfoWrap.value?.ninjaArtsList[idx].name || ''}を削除します。`,
         confirmButtonText: '削除',
         cancelButtonText: 'キャンセル'
       }))) return
-      const ninjaArtsList = props.sheetInfo.ninjaArtsList
-      ninjaArtsList.splice(idx, 1)
+      const ninjaArtsList = sheetInfoWrap.value?.ninjaArtsList
+      ninjaArtsList?.splice(idx, 1)
     }
 
     const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
-      console.log(type, evt.oldIndex, evt.newIndex, props.sheetInfo.ninjaArtsList[evt.oldIndex || 0].name)
+      console.log(type, evt.oldIndex, evt.newIndex, sheetInfoWrap.value?.ninjaArtsList[evt.oldIndex || 0].name)
       if (type === 'end') {
-        const ninjaArtsList = props.sheetInfo.ninjaArtsList
-        const target = ninjaArtsList.splice((evt.oldIndex || 1) - 1, 1)[0]
-        ninjaArtsList.splice((evt.newIndex || 1) - 1, 0, target)
+        const ninjaArtsList = sheetInfoWrap.value?.ninjaArtsList
+        const target = ninjaArtsList?.splice((evt.oldIndex || 1) - 1, 1)[0] || null
+        if (target) {
+          ninjaArtsList?.splice((evt.newIndex || 1) - 1, 0, target)
+        }
       }
     }
 
@@ -274,10 +296,6 @@ h2:deep() {
   &.alt {
     width: calc(var(--sheet-font-size) * (2 + 10 + 8 + 3 + 4) + 5px + 1px);
   }
-}
-
-button {
-  font-size: inherit;
 }
 
 .draggable-handle {

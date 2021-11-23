@@ -1,7 +1,12 @@
 <template>
   <div class="image-input" :class="type">
-    <input type="file" @change="onImageUploaded($event)" >
-    <img alt="" :src="src" v-if="src">
+    <template v-if="src">
+      <label :for="imageInfo.key">
+        <img alt="" :src="src" :key="src">
+      </label>
+      <button @click="$emit('delete')">削除</button>
+    </template>
+    <input v-else type="file" @change="onImageUploaded($event)" >
   </div>
 </template>
 
@@ -48,31 +53,38 @@ export default defineComponent({
 @use "../../components/common";
 
 .image-input {
-  @include common.flex-box(column, stretch, flex-start);
+  position: relative;
+  @include common.flex-box(column, center, flex-start);
 
   img {
     border: 1px solid gray;
   }
 
-  &.chit img {
-    width: 5em;
-    height: 5em;
-    object-fit: cover;
-    object-position: center top;
+  &.chit {
+    img {
+      width: 5em;
+      height: 5em;
+      object-fit: cover;
+      object-position: center top;
+    }
   }
 
-  &.stand img {
-    width: 6em;
-    height: 9em;
-    object-fit: contain;
-    object-position: center bottom;
+  &.stand {
+    img {
+      width: 6em;
+      height: 9em;
+      object-fit: contain;
+      object-position: center bottom;
+    }
   }
 
-  &.back img {
-    width: 9em;
-    height: 6em;
-    object-fit: cover;
-    object-position: center bottom;
+  &.back {
+    img {
+      width: 9em;
+      height: 6em;
+      object-fit: cover;
+      object-position: center bottom;
+    }
   }
 }
 </style>

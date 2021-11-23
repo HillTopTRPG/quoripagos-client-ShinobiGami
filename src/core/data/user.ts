@@ -43,7 +43,7 @@ export type RoomLoginRequest = {
 }
 
 export type ClientUserData = {
-  key?: string;
+  key: string;
   refList: DataReference[];
   name: string;
   type: UserType;
@@ -80,9 +80,9 @@ export default makeStore<Store>('user-store', () => {
       console.error(err)
       return
     }
-    // console.log('notify-user-update')
-    // console.log(JSON.stringify(payload, null, '  '))
-    const index = state.userList.findIndex(r => r.name === payload.name)
+    console.log('notify-user-update')
+    console.log(JSON.stringify(payload, null, '  '))
+    const index = state.userList.findIndex(r => r.key === payload.key)
     if (index < 0) {
       state.userList.push(payload)
     } else {

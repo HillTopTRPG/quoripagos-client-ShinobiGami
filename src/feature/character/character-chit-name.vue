@@ -1,37 +1,39 @@
 <template>
   <div
-    v-if="character"
     class="chit"
-    :class="[character.type, viewName ? 'has-name' : 'non-name']"
+    :class="[type, viewName ? 'has-name' : 'non-name', isGm && secretCheck ? 'gm-only' : 'normal']"
     :style="styleObj"
     @click="onSelect()"
   >
     <div class="container">
-      <div class="type" v-if="viewName">{{ type }}</div>
+      <div class="type" v-if="viewName">{{ label }}{{ type === 'pc' ? ` ${scenarioName}` : '' }}</div>
       <div class="image">{{ oneName }}</div>
-      <div class="label" v-if="viewName">{{ name }}</div>
+      <div class="label" v-if="viewName">{{ characterSheetName }}</div>
+      <span class="message" v-if="isGm && secretCheck">PL不可視</span>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, reactive, ref, watch } from 'vue'
-import { Character } from './data'
+import { computed, defineComponent, PropType, reactive, ref, watch } from 'vue'
 import MediaListStore from '@/feature/media-list/data'
-import { Enigma, NPC } from '@/core/utility/shinobigamiScenario'
+import ScenarioStore from '@/feature/scenario/data'
+import CharacterStore from '@/feature/character/data'
+import { NPC, PC, RightHand } from '@/core/utility/shinobigamiScenario'
+import UserStore from '@/core/data/user'
 
 export default defineComponent({
   name: 'character-chit-name',
   props: {
-    character: {
-      type: Object as PropType<Character | NPC | Enigma>,
-      required: true
-    },
-    type: {
+    label: {
       type: String,
       required: true
     },
-    name: {
+    type: {
+      type: String as PropType<'pc' | 'npc' | 'right-hand' | 'enigma'>,
+      required: true
+    },
+    target: {
       type: String,
       required: true
     },
@@ -41,37 +43,74 @@ export default defineComponent({
     }
   },
   setup(props, { emit }) {
+    const userState = UserStore.injector()
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
     const mediaListState = MediaListStore.injector()
+    const scenarioState = ScenarioStore.injector()
+    const characterState = CharacterStore.injector()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const styleObj = reactive<any>({})
     const oneName = ref('')
-    watch(() => props.character, () => {
-      const c = props.character
-      if (c.type === 'character' || c.type === 'npc') {
-        const chitImageUrl = mediaListState.list.find(m => m.key === c.chitImageList[c.currentChitImage])?.data?.url
-        const standImageUrl = mediaListState.list.find(m => m.key === c.standImageList[c.currentStandImage])?.data?.url
+    const scenarioName = ref('')
+    const characterSheetName = ref('')
+    const secretCheck = ref(false)
+    watch([
+      () => props.type,
+      () => props.target,
+      () => characterState.characterList,
+      () => scenarioState.currentScenario.sheetInfo.pc,
+      () => scenarioState.currentScenario.sheetInfo.npc,
+      () => scenarioState.currentScenario.sheetInfo.righthand,
+      () => scenarioState.currentScenario.sheetInfo.enigma
+    ], () => {
+      let c: PC | NPC | RightHand | undefined
+      const sheetInfo = scenarioState.currentScenario.sheetInfo
+      if (props.type === 'pc') {
+        c = sheetInfo.pc.find(p => p._characterKey === props.target)
+        secretCheck.value = false
+
+        const character = characterState.characterList.find(character => character.key === c?._characterKey)
+        characterSheetName.value = character?.data?.sheetInfo.characterName || ''
+      }
+      if (props.type === 'npc') {
+        c = sheetInfo.npc.find(p => p._characterKey === props.target)
+        secretCheck.value = c?.secretcheck || false
+        characterSheetName.value = ''
+      }
+      if (props.type === 'right-hand') {
+        c = sheetInfo.righthand.find(p => p._characterKey === props.target)
+        secretCheck.value = c?._secretCheck || false
+        characterSheetName.value = ''
+      }
+      if (c) {
+        scenarioName.value = c.name
+        characterSheetName.value = ''
+
+        const chitImageUrl = mediaListState.list.find(m => c && m.key === c.chitImageList[c.currentChitImage])?.data?.url
         styleObj['--color'] = c?.color
         styleObj['--chit-image'] = chitImageUrl ? `url('${chitImageUrl}')` : ''
-        styleObj['--stand-image'] = standImageUrl ? `url('${standImageUrl}')` : ''
-        if (chitImageUrl) {
-          oneName.value = ''
-        } else {
-          let name: string
-          if (c.type === 'character') name = c.sheetInfo.characterName
-          else name = c.sheetInfo?.characterName || c.name
-          oneName.value = name ? name.substr(0, 1) : ''
-        }
+        oneName.value = scenarioName.value ? scenarioName.value.substr(0, 1) : ''
       }
-      if (c.type === 'enigma') {
-        const imageUrl = mediaListState.list.find(m => m.key === c.imageKey)?.data?.url
+      if (props.type === 'enigma') {
+        const e = sheetInfo.enigma.find(e => e.name === props.target)
+        scenarioName.value = e?.name || ''
+        secretCheck.value = false
+
+        // TODO エニグマの画像もマルチにしたい
+        const imageUrl = mediaListState.list.find(m => m.key === e?._imageKey)?.data?.url
         styleObj['--chit-image'] = imageUrl ? `url('${imageUrl}')` : ''
-        oneName.value = c.name ? c.name.substr(0, 1) : ''
+        styleObj['--color'] = e?.color
+        oneName.value = scenarioName.value ? scenarioName.value.substr(0, 1) : ''
       }
     }, { immediate: true, deep: true })
 
     return {
+      isGm,
+      secretCheck,
       styleObj,
       oneName,
+      scenarioName,
+      characterSheetName,
       onSelect: () => { emit('select') }
     }
   }
@@ -93,6 +132,10 @@ export default defineComponent({
     padding: 0.88em 0 1.76em 0;
   }
 
+  &.gm-only {
+    padding: 0.88em 0 2.9em 0 !important;
+  }
+
   &:before {
     content: '';
     display: block;
@@ -102,6 +145,10 @@ export default defineComponent({
   .container {
     @include common.position-full-size();
     @include common.flex-box(column, stretch, flex-start);
+  }
+
+  .message {
+    font-size: 80%;
   }
 
   .image {

@@ -1,23 +1,34 @@
 <template>
-  <template v-for="c in characterList" :key="c.key">
+  <template v-for="c in pcList" :key="c._characterKey">
     <transition name="character-fade">
       <character-chit-name
-        type="PC"
-        :character="c.data"
+        type="pc"
+        label="PC"
+        :target="c._characterKey"
         :view-name="false"
-        :name="c.data.sheetInfo.characterName"
-        v-if="c.data && c.data.plot === -1"
+        v-if="c.plot === -1"
       />
     </transition>
   </template>
-  <template v-for="(n, idx) in npcList" :key="`${idx}-${n.name}`">
+  <template v-for="n in npcList" :key="n._characterKey">
     <transition name="character-fade">
       <character-chit-name
-        type="NPC"
-        :character="n"
+        type="npc"
+        label="NPC"
+        :target="n._characterKey"
         :view-name="false"
-        :name="n.sheetInfo ? n.sheetInfo.characterName : n.name"
-        v-if="n && n.plot === -1 && !n.secretcheck"
+        v-if="n.plot === -1 && !n.secretcheck"
+      />
+    </transition>
+  </template>
+  <template v-for="r in rightHandList" :key="r._characterKey">
+    <transition name="character-fade">
+      <character-chit-name
+        type="right-hand"
+        label="腹心"
+        :target="r._characterKey"
+        :view-name="false"
+        v-if="r.plot === -1 && !r._secretCheck"
       />
     </transition>
   </template>
@@ -37,13 +48,17 @@ export default defineComponent({
     const characterState = CharacterStore.injector()
 
     const scenarioState = ScenarioStore.injector()
+    const pcList = computed(() => scenarioState.currentScenario.sheetInfo.pc)
     const npcList = computed(() => scenarioState.currentScenario.sheetInfo.npc)
+    const rightHandList = computed(() => scenarioState.currentScenario.sheetInfo.righthand)
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
 
     return {
       characterList: characterState.makeWrapCharacterList(),
+      pcList,
       npcList,
+      rightHandList,
       isGm
     }
   }

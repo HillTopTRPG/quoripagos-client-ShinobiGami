@@ -2,9 +2,7 @@ import { computed, reactive } from 'vue'
 import { makeStore, commonStoreDataProcess, StoreUpdateProperties } from '@/core/utility/vue3'
 import { StoreData } from '@/core/utility/FileUtility'
 import { ShinobiGami } from '@/core/utility/shinobigami'
-import SocketStore from '@/core/data/socket'
-import { getFileName } from '@/core/utility/PrimaryDataUtility'
-import MediaListStore, { getUrlTypes, MediaStore } from '@/feature/media-list/data'
+import { MediaStore } from '@/feature/media-list/data'
 import { ComputedRef } from '@vue/reactivity'
 
 export type ImageInfo = {
@@ -14,21 +12,8 @@ export type ImageInfo = {
   name: string;
 }
 
-export type CharacterBase = {
-  plot: number;
-  isFumble: boolean;
-  isActed: boolean;
+export type Character = {
   sheetViewPass: string;
-  sheetInfo: ShinobiGami | null;
-  color: string;
-  chitImageList: string[];
-  standImageList: string[];
-  currentChitImage: number;
-  currentStandImage: number;
-}
-
-export type Character = CharacterBase & {
-  type: 'character';
   sheetInfo: ShinobiGami;
 }
 
@@ -62,10 +47,10 @@ export type Store = {
   ready: boolean,
   characterList: StoreData<Character>[];
   requestData: () => Promise<void>;
-  insertData: (c: Character[], mediaList: [ImageInfo[], ImageInfo[]][]) => Promise<void>;
-  uploadCharacterImage: (character: CharacterBase, mediaInfo: [ImageInfo[], ImageInfo[]]) => Promise<void>;
+  insertData: (c: Character[]) => Promise<string[]>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  makeWrapCharacterList: () => ComputedRef<(StoreData<Character> & { styleObj: any })[]>;
+  makeWrapCharacterList: () => ComputedRef<(StoreData<Character>)[]>;
+  insertEmptyCharacter: () => Promise<string>;
 }
 
 export default makeStore<Store>('character-store', () => {
@@ -78,15 +63,6 @@ export default makeStore<Store>('character-store', () => {
     state.characterList,
     'character',
     [
-      'type',
-      'plot',
-      'isFumble',
-      'isActed',
-      'color',
-      'chitImageList',
-      'standImageList',
-      'currentChitImage',
-      'currentStandImage',
       'sheetInfo',
       'sheetViewPass'
     ]
@@ -98,76 +74,118 @@ export default makeStore<Store>('character-store', () => {
   }
   setup().then()
 
-  const makeUploadMediaInfoList = (mediaList: [ImageInfo[], ImageInfo[]][]): UploadMediaInfo[] =>
-    mediaList.flatMap(mediaInfo => mediaInfo.flatMap((list, idx) => list
-      .filter(img => img.type === 'new-file' && img.name)
-      .map(img => ({
-        key: img.key,
-        url: '',
-        dataLocation: 'server',
-        ...getUrlTypes(img.name),
-        rawPath: getFileName(img.name),
-        tag: idx === 0 ? 'chit' : 'stand',
-        name: img.name,
-        arrayBuffer: img.src
-      }))))
+  // const makeUploadMediaInfoList = (mediaList: [ImageInfo[], ImageInfo[]][]): UploadMediaInfo[] =>
+  //   mediaList.flatMap(mediaInfo => mediaInfo.flatMap((list, idx) => list
+  //     .filter(img => img.type === 'new-file' && img.name)
+  //     .map(img => ({
+  //       key: img.key,
+  //       url: '',
+  //       dataLocation: 'server',
+  //       ...getUrlTypes(img.name),
+  //       rawPath: getFileName(img.name),
+  //       tag: idx === 0 ? 'chit' : 'stand',
+  //       name: img.name,
+  //       arrayBuffer: img.src
+  //     }))))
+  //
+  // const socketState = SocketStore.injector()
+  //
+  // const uploadAndKeyReplace = async (uploadMediaInfoList: UploadMediaInfo[], mediaList: [ImageInfo[], ImageInfo[]][]) => {
+  //   const resultList = await socketState.sendSocketServerRoundTripRequest<UploadMediaRequest, UploadMediaResponse>(
+  //     'media-api-upload',
+  //     { uploadMediaInfoList, option: {} }
+  //   )
+  //   let count = 0
+  //   mediaList.forEach(tuple => {
+  //     tuple.forEach(
+  //       list => list
+  //         .filter(img => img.type === 'new-file' && img.name)
+  //         .forEach(img => (img.key = resultList[count++].key))
+  //     )
+  //   })
+  // }
 
-  const socketState = SocketStore.injector()
-
-  const uploadAndKeyReplace = async (uploadMediaInfoList: UploadMediaInfo[], mediaList: [ImageInfo[], ImageInfo[]][]) => {
-    const resultList = await socketState.sendSocketServerRoundTripRequest<UploadMediaRequest, UploadMediaResponse>(
-      'media-api-upload',
-      { uploadMediaInfoList, option: {} }
-    )
-    let count = 0
-    mediaList.forEach(tuple => {
-      tuple.forEach(
-        list => list
-          .filter(img => img.type === 'new-file' && img.name)
-          .forEach(img => (img.key = resultList[count++].key))
-      )
-    })
-  }
-
-  const uploadCharacterImage = async (character: CharacterBase, mediaInfo: [ImageInfo[], ImageInfo[]]): Promise<void> => {
-    const uploadMediaInfoList: UploadMediaInfo[] = makeUploadMediaInfoList([mediaInfo])
-    console.log(uploadMediaInfoList)
-    await uploadAndKeyReplace(uploadMediaInfoList, [mediaInfo])
-    character.chitImageList = mediaInfo[0].map(t => t.key)
-    character.currentChitImage = character.chitImageList.length ? 0 : -1
-    character.standImageList = mediaInfo[1].map(t => t.key)
-    character.currentStandImage = character.standImageList.length ? 0 : -1
-  }
-
-  const insertDataWrapper = async (characterList: Character[], mediaList: [ImageInfo[], ImageInfo[]][]): Promise<void> => {
-    const uploadMediaInfoList: UploadMediaInfo[] = makeUploadMediaInfoList(mediaList)
-    console.log(uploadMediaInfoList)
-    await uploadAndKeyReplace(uploadMediaInfoList, mediaList)
-    mediaList.forEach((tuple, idx) => {
-      characterList[idx].chitImageList = tuple[0].map(t => t.key)
-      characterList[idx].currentChitImage = characterList[idx].chitImageList.length ? 0 : -1
-      characterList[idx].standImageList = tuple[1].map(t => t.key)
-      characterList[idx].currentStandImage = characterList[idx].standImageList.length ? 0 : -1
-    })
-    await insertData(...characterList.map(c => ({ data: c })))
+  const insertDataWrapper = async (
+    characterList: Character[]
+  ): Promise<string[]> => {
+    // const uploadMediaInfoList: UploadMediaInfo[] = makeUploadMediaInfoList(mediaList)
+    // console.log(uploadMediaInfoList)
+    // await uploadAndKeyReplace(uploadMediaInfoList, mediaList)
+    // mediaList.forEach((tuple, idx) => {
+    //   characterList[idx].chitImageList = tuple[0].map(t => t.key)
+    //   characterList[idx].currentChitImage = characterList[idx].chitImageList.length ? 0 : -1
+    //   characterList[idx].standImageList = tuple[1].map(t => t.key)
+    //   characterList[idx].currentStandImage = characterList[idx].standImageList.length ? 0 : -1
+    // })
+    return await insertData(...characterList.map(c => ({ data: c, ownerType: null, owner: null })))
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const makeWrapCharacterList = (): ComputedRef<(StoreData<Character> & { styleObj: any })[]> => {
-    const mediaListState = MediaListStore.injector()
+  const makeWrapCharacterList = (): ComputedRef<(StoreData<Character>)[]> => {
+    // const mediaListState = MediaListStore.injector()
     return computed(() => state.characterList.map(c => {
-      const chitImageUrl = mediaListState.list.find(m => m.key === c.data?.chitImageList[c.data?.currentChitImage])?.data?.url
-      const standImageUrl = mediaListState.list.find(m => m.key === c.data?.standImageList[c.data?.currentStandImage])?.data?.url
-      const styleObj = {
-        '--color': c.data?.color,
-        '--chit-image': chitImageUrl ? `url('${chitImageUrl}')` : '',
-        '--stand-image': standImageUrl ? `url('${standImageUrl}')` : ''
-      }
+      // const chitImageUrl = mediaListState.list.find(m => m.key === c.data?.chitImageList[c.data?.currentChitImage])?.data?.url
+      // const standImageUrl = mediaListState.list.find(m => m.key === c.data?.standImageList[c.data?.currentStandImage])?.data?.url
+      // const styleObj = {
+      //   '--color': c.data?.color,
+      //   '--chit-image': chitImageUrl ? `url('${chitImageUrl}')` : '',
+      //   '--stand-image': standImageUrl ? `url('${standImageUrl}')` : ''
+      // }
       return {
-        ...c,
-        styleObj
+        ...c
+        // styleObj
       }
     }))
+  }
+
+  const insertEmptyCharacter = async (): Promise<string> => {
+    const keys = await insertData(...[{
+      ownerType: null,
+      owner: null,
+      data: {
+        sheetViewPass: '',
+        sheetInfo: {
+          url: '',
+          playerName: '',
+          characterName: '',
+          characterNameKana: '',
+          regulation: '',
+          foe: '',
+          exp: '',
+          memo: '',
+          upperStyle: '',
+          subStyle: '',
+          level: '',
+          age: '',
+          sex: '',
+          cover: '',
+          belief: '',
+          stylerule: '',
+          ninjaArtsList: [],
+          personalityList: [],
+          scenario: {
+            handout: '',
+            mission: '',
+            name: '',
+            pcno: ''
+          },
+          backgroundList: [],
+          skill: {
+            learnedList: [],
+            damagedList: [],
+            damagedColList: [],
+            spaceList: [],
+            outRow: false,
+            isUseColDamage: false,
+            isUseSingleDamage: false,
+            isOutputSingleDamage: false
+          },
+          specialArtsList: [],
+          ninjaToolList: []
+        }
+      }
+    }])
+    return keys[0]
   }
 
   return {
@@ -179,7 +197,7 @@ export default makeStore<Store>('character-store', () => {
     },
     requestData,
     insertData: insertDataWrapper,
-    uploadCharacterImage,
+    insertEmptyCharacter,
     makeWrapCharacterList
   }
 })

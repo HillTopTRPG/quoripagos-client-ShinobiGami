@@ -1,35 +1,56 @@
 import { getJsonByGet, getJsonByJsonp } from '@/core/utility/Utility'
-import { CharacterBase } from '@/feature/character/data'
 
-export type PC = {
-  type: 'pc';
+export type VelocityChitBase = {
+  plot: number;
+  isFumble: boolean;
+  isActed: boolean;
+}
+
+export type ChitBase = {
+  chitImageList: string[];
+  standImageList: string[];
+  currentChitImage: number;
+  currentStandImage: number;
+}
+
+export type ActorBase = {
+  color: string;
+}
+
+export type PC = VelocityChitBase & ChitBase & ActorBase & {
+  _type: 'pc';
   intro: string;
   mission: string;
   name: string;
   recommend: string;
   secret: string;
-  openList: string[];
-  characterKey: string;
+  _openList: string[];
+  _characterKey: string;
+  _userKey: string;
 }
 
-export type NPC = Omit<PC, 'type'> & CharacterBase & {
-  type: 'npc';
+export type NPC = Omit<PC, '_type' | '_userKey'> & {
+  _type: 'npc';
   secretcheck: boolean;
-  url: string;
-  sheetOpenList: string[];
+  _hasSheet: boolean;
+  _sheetOpenList: string[];
 }
 
-export type Prize = {
-  careerClose: string;
-  careerOpen: string;
+export type RightHand = VelocityChitBase & ChitBase & ActorBase & {
+  _type: 'right-hand';
+  menace: string;
   name: string;
-  secret: boolean;
+  notes: string;
+  _characterKey: string;
+  _secretCheck: boolean;
+  _hasSheet: boolean;
+  _sheetOpenList: string[];
 }
 
-export type Enigma = {
-  type: 'enigma';
+export type Enigma = ChitBase & ActorBase & {
+  _type: 'enigma';
   // 画像
-  imageKey: string | null;
+  _imageKey: string | null;
   // 脅威度
   menace: string;
   // 偽装
@@ -41,23 +62,24 @@ export type Enigma = {
   // バインド
   target: string;
   // バインドPC
-  targetId: string;
+  _targetId: string;
   // 公開状態
-  open: boolean;
+  _open: boolean;
   // 解除状態
-  disarm: boolean;
+  _disarm: boolean;
   // 解除判定
-  disarmMethod: string;
+  _disarmMethod: string;
   // 判定特技
-  targetSkill: string;
+  _targetSkill: string;
   // 効果
-  effect: string;
+  _effect: string;
 }
 
-export type RightHand = {
-  menace: string;
+export type Prize = ChitBase & ActorBase & {
+  careerClose: string;
+  careerOpen: string;
   name: string;
-  notes: string;
+  secret: boolean;
 }
 
 export type Summary = {

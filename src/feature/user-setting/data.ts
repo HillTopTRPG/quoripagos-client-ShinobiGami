@@ -5,7 +5,7 @@ import UserStore from '@/core/data/user'
 import { ApplicationError } from '@/core/error/ApplicationError'
 
 export type UserSetting = {
-  userName: string;
+  userKey: string;
   fontColor: string;
   accent1Color: string;
   accent2Color: string;
@@ -31,7 +31,7 @@ export default makeStore<Store>('user-setting-store', () => {
     state.userSettingList,
     'user-setting',
     [
-      'userName',
+      'userKey',
       'fontColor',
       'accent1Color',
       'accent2Color',
@@ -43,7 +43,7 @@ export default makeStore<Store>('user-setting-store', () => {
     const user = userState.userList.find(u => u.key === userState.userLoginResponse?.userKey)
     if (!user) throw new ApplicationError('You are not logged in yet.(2)')
 
-    const getUserSetting = (): UserSetting | null => state.userSettingList.find(us => us.data?.userName === user.name)?.data || null
+    const getUserSetting = (): UserSetting | null => state.userSettingList.find(us => us.data?.userKey === user.key)?.data || null
 
     await requestData()
     if (getUserSetting()) {
@@ -52,7 +52,7 @@ export default makeStore<Store>('user-setting-store', () => {
     }
     await insertData({
       data: {
-        userName: user.name,
+        userKey: user.key,
         accent1Color: 'rgba(255, 40, 0, 1)',
         accent2Color: 'rgba(0, 111, 255, 1)',
         fontColor: '#3E2723',
@@ -85,7 +85,7 @@ export default makeStore<Store>('user-setting-store', () => {
     get userSetting() {
       const user = userState.userList.find(u => u.key === userState.userLoginResponse?.userKey)
       if (!user) throw new ApplicationError('You are not logged in yet.(3)')
-      const userSetting = state.userSettingList.find(us => us.data?.userName === user.name)
+      const userSetting = state.userSettingList.find(us => us.data?.userKey === user.key)
       return userSetting?.data || null
     },
     requestData

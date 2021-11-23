@@ -15,7 +15,7 @@
         <span>{{ altLabel }}</span>
       </label>
     </span>
-    <button @click="$emit('add')" v-if="editable">追加</button>
+    <button @click="$emit('add')" v-if="useAdd">追加</button>
   </h2>
 </template>
 

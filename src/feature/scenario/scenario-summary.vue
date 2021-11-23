@@ -7,7 +7,7 @@
     :alt-label="isGm ? '入替/削除' : '簡易'"
     :editable="true"
     v-model:viewMode="viewMode"
-    :use-add="true"
+    :use-add="isGm"
     @add="onAdd()"
   />
   <draggable
@@ -28,23 +28,23 @@
         </div>
         <table class="summary">
           <tbody>
-          <template v-if="isGm || !element.summary.secret">
+          <template v-if="isGm || !element.raw.secret">
             <tr>
               <th><label :for="isGm ? `summary-title-${element.idx}-${elmId}` : ''">タイトル</label></th>
               <td class="title">
-                <input type="text" v-if="isGm" :id="`summary-title-${element.idx}-${elmId}`" v-model="element.summary.title">
-                <template v-else>{{ element.summary.title }}</template>
+                <input type="text" v-if="isGm" :id="`summary-title-${element.idx}-${elmId}`" v-model="element.raw.title">
+                <template v-else>{{ element.raw.title }}</template>
               </td>
               <th><label :for="isGm ? `summary-secret-${element.idx}-${elmId}` : ''">秘</label></th>
               <td class="secret">
-                <input type="checkbox" v-if="isGm" :id="`summary-secret-${element.idx}-${elmId}`" v-model="element.summary.secret">
-                <input type="checkbox" v-else :checked="element.summary.secret" @click.prevent>
+                <input type="checkbox" v-if="isGm" :id="`summary-secret-${element.idx}-${elmId}`" v-model="element.raw.secret">
+                <input type="checkbox" v-else :checked="element.raw.secret" @click.prevent>
               </td>
             </tr>
             <tr v-show="viewMode === 'normal'">
               <td class="contents" colspan="4">
-                <textarea v-if="isGm" v-model="element.summary.contents"></textarea>
-                <template v-else>{{ element.summary.contents }}</template>
+                <textarea v-if="isGm" v-model="element.raw.contents"></textarea>
+                <template v-else>{{ element.raw.contents }}</template>
               </td>
             </tr>
           </template>
@@ -56,34 +56,23 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType, ref, watch } from 'vue'
-import { ShinobiGamiScenario, Summary } from '@/core/utility/shinobigamiScenario'
+import { computed, defineComponent, ref } from 'vue'
 import UserStore from '../../core/data/user'
 import { v4 as uuidV4 } from 'uuid'
 import draggable from 'vuedraggable'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import { questionDialog } from '@/core/utility/dialog'
+import ScenarioStore from '@/feature/scenario/data'
 
 export default defineComponent({
   name: 'scenario-summary',
   components: { ViewMode, draggable },
-  props: {
-    sheetInfo: {
-      type: Object as PropType<ShinobiGamiScenario>,
-      required: true
-    }
-  },
-  setup(props) {
+  setup() {
+    const scenarioState = ScenarioStore.injector()
+    const summaryList = scenarioState.currentScenario.sheetInfo.summary
     const elmId = uuidV4()
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
-
-    type WrapSummary = { idx: number; summary: Summary; }
-    const makeWrapList = (): WrapSummary[] => props.sheetInfo.summary.map((summary, idx) => ({ idx, summary })) || []
-    const summaryListWrap = ref<WrapSummary[]>([])
-    watch(() => props.sheetInfo.summary, () => {
-      summaryListWrap.value = makeWrapList()
-    }, { deep: true, immediate: true })
 
     const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
 
@@ -94,21 +83,23 @@ export default defineComponent({
     const onDelete = async (idx: number) => {
       if (!(await questionDialog({
         title: '説明削除',
-        text: `${props.sheetInfo.summary[idx].title}を削除します。`,
+        text: `${summaryList[idx].title}を削除します。`,
         confirmButtonText: '削除',
         cancelButtonText: 'キャンセル'
       }))) return
-      const summary = props.sheetInfo.summary
-      summary.splice(idx, 1)
+      summaryList.splice(idx, 1)
     }
 
     const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
       if (type === 'end') {
-        const summary = props.sheetInfo.summary
-        const target = summary.splice(evt.oldIndex || 0, 1)[0]
-        summary.splice(evt.newIndex || 0, 0, target)
+        const target = summaryList.splice(evt.oldIndex || 0, 1)[0]
+        summaryList.splice(evt.newIndex || 0, 0, target)
       }
     }
+
+    const {
+      summaryListWrap
+    } = scenarioState.makeWrapLists()
 
     return {
       elmId,
@@ -190,7 +181,7 @@ table {
 
   &.summary {
     th {
-      width: 5em;
+      width: 6em;
     }
 
     .secret {

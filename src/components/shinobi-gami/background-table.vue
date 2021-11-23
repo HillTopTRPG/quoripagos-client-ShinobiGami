@@ -75,41 +75,63 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType, ref, watch } from 'vue'
+import { defineComponent, PropType, ref, watch } from 'vue'
 import { Background, ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
 import UserStore from '@/core/data/user'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import draggable from 'vuedraggable'
 import { questionDialog } from '@/core/utility/dialog'
+import ScenarioStore from '@/feature/scenario/data'
+import CharacterStore from '@/feature/character/data'
 
 export default defineComponent({
   name: 'background-table',
   components: { ViewMode, draggable },
   props: {
+    type: {
+      type: String as PropType<'pc' | 'npc' | 'right-hand'>,
+      required: true
+    },
+    target: {
+      type: String,
+      default: null
+    },
     mode: {
       type: String as PropType<'update' | 'insert'>,
       require: true
-    },
-    sheetInfo: {
-      type: Object as PropType<ShinobiGami>,
-      required: true
-    },
-    characterKey: {
-      type: String,
-      required: true
-    },
-    url: {
-      type: String,
-      required: true
-    },
-    sheetViewPass: {
-      type: String,
-      required: true
     }
   },
   setup(props) {
+    const scenarioState = ScenarioStore.injector()
+    const characterState = CharacterStore.injector()
+    const userState = UserStore.injector()
+
+    const sheetViewPass = ref('')
+    const sheetInfoWrap = ref<ShinobiGami | null>(null)
+    watch(() => characterState.characterList.find(c => c.key === props.target)?.data, (data) => {
+      sheetViewPass.value = data?.sheetViewPass || ''
+      sheetInfoWrap.value = data?.sheetInfo || null
+    }, { immediate: true, deep: true })
+
+    const isRawViewMode = ref(false)
+    watch([
+      () => props.type,
+      () => props.target,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
+    ], () => {
+      const { isOwn } = scenarioState.getChitStatus(
+        props.type,
+        props.target,
+        userState.selfUser?.key || null
+      )
+      isRawViewMode.value = props.mode !== 'update' || (userState.selfUser?.type !== 'gm' && !isOwn)
+    }, { immediate: true, deep: true })
+
     const reloadBackground = async () => {
-      const helper = new ShinobigamiHelper(props.url, props.sheetViewPass)
+      const helper = new ShinobigamiHelper(sheetInfoWrap.value?.url || '', sheetViewPass.value)
       if (!helper.isThis()) {
         console.log('is not this')
         return
@@ -118,13 +140,13 @@ export default defineComponent({
       console.log(jsons)
       console.log(rd)
       if (!rd) return
-      const backgroundList = props.sheetInfo.backgroundList
-      backgroundList.splice(0, backgroundList.length, ...rd.backgroundList)
+      const backgroundList = sheetInfoWrap.value?.backgroundList
+      backgroundList?.splice(0, backgroundList?.length || 0, ...rd.backgroundList)
     }
 
     const addBackground = () => {
-      const backgroundList = props.sheetInfo.backgroundList
-      backgroundList.push({
+      const backgroundList = sheetInfoWrap.value?.backgroundList
+      backgroundList?.push({
         name: '',
         type: '長所',
         point: '',
@@ -132,15 +154,10 @@ export default defineComponent({
       })
     }
 
-    const userState = UserStore.injector()
-    const isGm = computed(() => userState.selfUser?.type === 'gm')
-    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
-    const isRawViewMode = computed(() => props.mode !== 'insert' && !isGm.value && !isOwn.value)
-
     type WrapBackground = { idx: number; background: Background; }
-    const makeWrapList = (): WrapBackground[] => props.sheetInfo.backgroundList.map((background, idx) => ({ idx, background })) || []
+    const makeWrapList = (): WrapBackground[] => sheetInfoWrap.value?.backgroundList.map((background, idx) => ({ idx, background })) || []
     const backgroundListWrap = ref<WrapBackground[]>([])
-    watch(() => props.sheetInfo.backgroundList, () => {
+    watch(() => sheetInfoWrap.value?.backgroundList, () => {
       backgroundListWrap.value = makeWrapList()
     }, { deep: true, immediate: true })
 
@@ -149,19 +166,19 @@ export default defineComponent({
     const onDelete = async (idx: number) => {
       if (!(await questionDialog({
         title: '背景削除',
-        text: `${props.sheetInfo.backgroundList[idx].name}を削除します。`,
+        text: `${sheetInfoWrap.value?.backgroundList[idx].name || ''}を削除します。`,
         confirmButtonText: '削除',
         cancelButtonText: 'キャンセル'
       }))) return
-      const backgroundList = props.sheetInfo.backgroundList
-      backgroundList.splice(idx, 1)
+      const backgroundList = sheetInfoWrap.value?.backgroundList
+      backgroundList?.splice(idx, 1)
     }
 
     const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
       if (type === 'end') {
-        const backgroundList = props.sheetInfo.backgroundList
-        const target = backgroundList.splice((evt.oldIndex || 1) - 1, 1)[0]
-        backgroundList.splice((evt.newIndex || 1) - 1, 0, target)
+        const backgroundList = sheetInfoWrap.value?.backgroundList
+        const target = backgroundList?.splice((evt.oldIndex || 1) - 1, 1)[0]
+        if (target) backgroundList?.splice((evt.newIndex || 1) - 1, 0, target)
       }
     }
 

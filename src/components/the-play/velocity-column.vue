@@ -6,50 +6,50 @@
       <span class="e">{{ v.e }}</span>
     </div>
     <div class="field">
-      <template v-for="c in characterList" :key="c.key">
+      <template v-for="p in pcList" :key="p._characterKey">
         <transition name="character-fade">
           <character-chit-name
-            type="PC"
-            :character="c.data"
-            :name="c.data.sheetInfo.characterName"
+            type="pc"
+            label="PC"
+            :target="p._characterKey"
             :view-name="false"
-            v-if="c.data && c.data.plot === idx && !c.data.isFumble"
+            v-if="p.plot === idx && !p.isFumble"
           />
         </transition>
       </template>
-      <template v-for="(n, npcIdx) in npcList" :key="`${npcIdx}-${n.name}`">
+      <template v-for="n in npcList" :key="n._characterKey">
         <transition name="character-fade">
           <character-chit-name
-            type="NPC"
-            :character="n"
-            :name="n.sheetInfo ? n.sheetInfo.characterName : n.name"
+            type="npc"
+            label="NPC"
+            :target="n._characterKey"
             :view-name="false"
-            v-if="n && n.plot === idx && !n.secretcheck && !n.isFumble"
+            v-if="n.plot === idx && !n.secretcheck && !n.isFumble"
           />
         </transition>
       </template>
       <span class="n">{{ idx }}</span>
     </div>
     <div class="fumble">
-      <template v-for="c in characterList" :key="c.key">
+      <template v-for="c in pcList" :key="c._characterKey">
         <transition name="character-fade">
           <character-chit-name
-            type="PC"
-            :character="c.data"
-            :name="c.data.sheetInfo.characterName"
+            type="pc"
+            label="PC"
+            :target="c._characterKey"
             :view-name="false"
-            v-if="c.data && c.data.plot === idx && c.data.isFumble"
+            v-if="c.plot === idx && c.isFumble"
           />
         </transition>
       </template>
       <template v-for="(n, npcIdx) in npcList" :key="`${npcIdx}-${n.name}`">
         <transition name="character-fade">
           <character-chit-name
-            type="NPC"
-            :character="n"
-            :name="n.sheetInfo ? n.sheetInfo.characterName : n.name"
+            type="npc"
+            label="NPC"
+            :target="n._characterKey"
             :view-name="false"
-            v-if="n && n.plot === idx && !n.secretcheck && n.isFumble"
+            v-if="n.plot === idx && !n.secretcheck && n.isFumble"
           />
         </transition>
       </template>
@@ -85,6 +85,7 @@ export default defineComponent({
     ])
 
     const scenarioState = ScenarioStore.injector()
+    const pcList = computed(() => scenarioState.currentScenario.sheetInfo.pc)
     const npcList = computed(() => scenarioState.currentScenario.sheetInfo.npc)
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
@@ -92,6 +93,7 @@ export default defineComponent({
     return {
       characterList: characterState.makeWrapCharacterList(),
       velocity,
+      pcList,
       npcList,
       isGm
     }

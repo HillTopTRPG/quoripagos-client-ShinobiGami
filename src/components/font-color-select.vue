@@ -1,13 +1,17 @@
 <template>
   <span class="color-palette" :class="editable ? '' : 'non-editable'">
-    <span
-      class="color"
-      :class="c === modelValue ? 'selected' : ''"
-      :style="{ '--color': c }"
+    <template
       v-for="(c, idx) in colorList"
       :key="c"
-      @click="selectColor(c)"
-    >{{ idx.toString().padStart(3, '0') }}</span>
+    >
+      <span
+        class="color"
+        :class="c === modelValue ? 'selected' : ''"
+        :style="{ '--color': c }"
+        @click="selectColor(c)"
+        v-if="editable || c === modelValue"
+      >{{ idx.toString().padStart(3, '0') }}</span>
+    </template>
   </span>
 </template>
 

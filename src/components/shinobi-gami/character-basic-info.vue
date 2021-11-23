@@ -130,19 +130,21 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType, ref, watch } from 'vue'
+import { defineComponent, PropType, ref, watch } from 'vue'
 import { v4 as uuidV4 } from 'uuid'
 import { ShinobiGami } from '@/core/utility/shinobigami'
 import UserStore from '@/core/data/user'
+import ScenarioStore from '@/feature/scenario/data'
+import CharacterStore from '@/feature/character/data'
 
 export default defineComponent({
   name: 'character-basic-info',
   props: {
-    sheetInfo: {
-      type: Object as PropType<ShinobiGami>,
+    type: {
+      type: String as PropType<'pc' | 'npc' | 'right-hand'>,
       required: true
     },
-    characterKey: {
+    target: {
       type: String,
       required: true
     },
@@ -152,16 +154,33 @@ export default defineComponent({
     }
   },
   setup(props) {
-    const elmId = uuidV4()
-    const sheetInfoWrap = ref(props.sheetInfo)
-    watch(() => props.sheetInfo, () => {
-      sheetInfoWrap.value = props.sheetInfo
-    })
-
+    const scenarioState = ScenarioStore.injector()
+    const characterState = CharacterStore.injector()
     const userState = UserStore.injector()
-    const isGm = computed(() => userState.selfUser?.type === 'gm')
-    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
-    const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode === 'view' || (!isGm.value && !isOwn.value)))
+
+    const sheetInfoWrap = ref<ShinobiGami | null>(null)
+    watch(() => characterState.characterList.find(c => c.key === props.target)?.data?.sheetInfo, (data) => {
+      sheetInfoWrap.value = data || null
+    }, { immediate: true, deep: true })
+
+    const isRawViewMode = ref(false)
+    watch([
+      () => props.type,
+      () => props.target,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
+    ], () => {
+      const { isOwn } = scenarioState.getChitStatus(
+        props.type,
+        props.target,
+        userState.selfUser?.key || null
+      )
+      isRawViewMode.value = props.mode !== 'update' || (userState.selfUser?.type !== 'gm' && !isOwn)
+    }, { immediate: true, deep: true })
+
+    const elmId = uuidV4()
 
     return {
       isRawViewMode,

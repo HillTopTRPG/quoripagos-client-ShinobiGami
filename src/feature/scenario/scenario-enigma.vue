@@ -1,13 +1,13 @@
 <template>
   <view-mode
     title="エニグマ"
-    :use-simple="isGm"
+    :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
     :alt-label="isGm ? '入替/削除' : '簡易'"
     :editable="mode === 'scenario'"
     v-model:viewMode="viewMode"
-    :use-add="true"
+    :use-add="isGm"
     @add="onAdd()"
   />
   <draggable
@@ -31,14 +31,14 @@
           <tr>
             <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-name` : ''">偽装</label></th>
             <td class="name" colspan="7">
-              <input type="text" :id="`enigma-${element.idx}-name`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.name">
-              <template v-else>{{ element.enigma.name }}</template>
+              <input type="text" :id="`enigma-${element.idx}-name`" v-if="isGm && mode === 'scenario'" v-model="element.raw.name">
+              <template v-else>{{ element.raw.name }}</template>
             </td>
             <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-power` : ''">戦力</label></th>
             <td class="power" colspan="7">
-              <input type="text" :id="`enigma-${element.idx}-power`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.power">
+              <input type="text" :id="`enigma-${element.idx}-power`" v-if="isGm && mode === 'scenario'" v-model="element.raw.power">
               <template v-else>
-                <template v-if="isGm || element.enigma.open">{{ element.enigma.power }}</template>
+                <template v-if="isGm || element.raw._open">{{ element.raw.power }}</template>
               </template>
             </td>
           </tr>
@@ -49,7 +49,7 @@
           <tr>
             <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-disarmMethod` : ''">解除方法</label></th>
             <td class="disarmMethod">
-              <select :id="`enigma-${element.idx}-disarmMethod`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.disarmMethod">
+              <select :id="`enigma-${element.idx}-disarmMethod`" v-if="isGm && mode === 'scenario'" v-model="element.raw._disarmMethod">
                 <option disabled>解除方法</option>
                 <option value="">未選択</option>
                 <option value="自動">自動</option>
@@ -57,35 +57,35 @@
                 <option value="計画判定">計画判定</option>
               </select>
               <template v-else>
-                <template v-if="isGm || element.enigma.open">{{ element.enigma.disarmMethod }}</template>
+                <template v-if="isGm || element.raw._open">{{ element.raw._disarmMethod || '未選択' }}</template>
               </template>
             </td>
             <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-open` : ''">公開</label></th>
             <td class="open">
               <div class="wrap">
-                <input type="checkbox" :id="`enigma-${element.idx}-open`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.open">
-                <input type="checkbox" v-else :checked="element.enigma.open" @click.prevent>
+                <input type="checkbox" :id="`enigma-${element.idx}-open`" v-if="isGm && mode === 'scenario'" v-model="element.raw._open">
+                <input type="checkbox" v-else :checked="element.raw._open" @click.prevent>
               </div>
             </td>
             <th class="disarm-th"><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-disarm` : ''">解除</label></th>
             <td class="disarm">
               <div class="wrap">
-                <input type="checkbox" :id="`enigma-${element.idx}-disarm`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.disarm">
-                <input type="checkbox" v-else :checked="element.enigma.disarm" @click.prevent>
+                <input type="checkbox" :id="`enigma-${element.idx}-disarm`" v-if="isGm && mode === 'scenario'" v-model="element.raw._disarm">
+                <input type="checkbox" v-else :checked="element.raw._disarm" @click.prevent>
               </div>
             </td>
             <th class="bind-th"><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-target` : ''">バインド</label></th>
             <td class="target">
-              <input type="text" :id="`enigma-${element.idx}-target`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.target">
+              <input type="text" :id="`enigma-${element.idx}-target`" v-if="isGm && mode === 'scenario'" v-model="element.raw.target">
               <template v-else>
-                <template v-if="isGm || element.enigma.open">{{ element.enigma.target }}</template>
+                <template v-if="isGm || element.raw._open">{{ element.raw.target || '指定なし' }}</template>
               </template>
             </td>
           </tr>
           <tr>
             <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-targetSkill` : ''">指定特技</label></th>
             <td class="targetSkill">
-              <select v-model="element.enigma.targetSkill" :id="`enigma-${element.idx}-targetSkill`" v-if="isGm && mode === 'scenario'">
+              <select v-model="element.raw._targetSkill" :id="`enigma-${element.idx}-targetSkill`" v-if="isGm && mode === 'scenario'">
                 <option value="">未選択</option>
                 <template v-for="col of 6" :key="col">
                   <optgroup :label="skillColumnList[col - 1]">
@@ -94,21 +94,21 @@
                 </template>
               </select>
               <template v-else>
-                <template v-if="isGm || element.enigma.open">{{ element.enigma.targetSkill }}</template>
+                <template v-if="isGm || element.raw._open">{{ element.raw._targetSkill || '未選択' }}</template>
               </template>
             </td>
             <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-menace` : ''">脅威度</label></th>
             <td class="menace" colspan="3">
-              <input type="text" :id="`enigma-${element.idx}-menace`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.menace">
+              <input type="text" :id="`enigma-${element.idx}-menace`" v-if="isGm && mode === 'scenario'" v-model="element.raw.menace">
               <template v-else>
-                <template v-if="isGm || element.enigma.open">{{ element.enigma.menace }}</template>
+                <template v-if="isGm || element.raw._open">{{ element.raw.menace }}</template>
               </template>
             </td>
             <th class="bind-th"><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-targetId` : ''">バインドPC</label></th>
             <td class="target">
-              <input type="text" :id="`enigma-${element.idx}-targetId`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.targetId">
+              <input type="text" :id="`enigma-${element.idx}-targetId`" v-if="isGm && mode === 'scenario'" v-model="element.raw._targetId">
               <template v-else>
-                <template v-if="isGm || element.enigma.open">{{ element.enigma.targetId }}</template>
+                <template v-if="isGm || element.raw._open">{{ element.raw._targetId || '指定なし' }}</template>
               </template>
             </td>
           </tr>
@@ -116,18 +116,18 @@
             <tr>
               <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-notes` : ''">説明</label></th>
               <td class="notes" colspan="7">
-                <input type="text" :id="`enigma-${element.idx}-notes`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.notes">
+                <input type="text" :id="`enigma-${element.idx}-notes`" v-if="isGm && mode === 'scenario'" v-model="element.raw.notes">
                 <template v-else>
-                  <template v-if="isGm || element.enigma.open">{{ element.enigma.notes }}</template>
+                  <template v-if="isGm || element.raw._open">{{ element.raw.notes }}</template>
                 </template>
               </td>
             </tr>
             <tr>
               <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-effect` : ''">効果</label></th>
               <td class="effect" colspan="7">
-                <textarea :id="`enigma-${element.idx}-effect`" v-if="isGm && mode === 'scenario'" v-model="element.enigma.effect"></textarea>
+                <textarea :id="`enigma-${element.idx}-effect`" v-if="isGm && mode === 'scenario'" v-model="element.raw._effect"></textarea>
                 <template v-else>
-                  <template v-if="isGm || element.enigma.open">{{ element.enigma.effect }}</template>
+                  <template v-if="isGm || element.raw._open">{{ element.raw._effect || '記載なし' }}</template>
                 </template>
               </td>
             </tr>
@@ -135,8 +135,8 @@
               <th><label>画像</label></th>
               <td colspan="7">
                 <div class="h-box enigma-image">
-                  <image-input :image-info="element.imageInfo" type="chit" @update="value => onUpdateEnigmaImage(element.idx, value)" />
-                  <button :disabled="element.imageInfo.type !== 'new-file' || !element.imageInfo.name" @click="uploadImages(element)">Image Upload</button>
+                  <image-input :image-info="element.imageInfo" :key="element.imageInfo.key" type="chit" @update="value => onUpdateEnigmaImage(element.idx, value)" />
+                  <button :disabled="element.imageInfo.type !== 'new-file' || !element.imageInfo.name" @click="uploadImages(element.imageInfo, element.raw)">Image Upload</button>
                 </div>
               </td>
             </tr>
@@ -150,12 +150,12 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType, ref, watch } from 'vue'
-import { Enigma, ShinobiGamiScenario } from '@/core/utility/shinobigamiScenario'
+import { Enigma } from '@/core/utility/shinobigamiScenario'
 import UserStore from '../../core/data/user'
 import CharacterStore, { ImageInfo, UploadMediaInfo, UploadMediaRequest, UploadMediaResponse } from '../character/data'
 import { removeFilter } from '@/core/utility/typescript'
 import SocketStore from '@/core/data/socket'
-import MediaListStore, { getUrlTypes } from '@/feature/media-list/data'
+import { getUrlTypes } from '@/feature/media-list/data'
 import { getFileName } from '@/core/utility/PrimaryDataUtility'
 import { v4 as uuidV4 } from 'uuid'
 import ImageInput from '@/feature/character/image-input.vue'
@@ -163,6 +163,7 @@ import { SkillTable } from '@/core/utility/shinobigami'
 import draggable from 'vuedraggable'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import { questionDialog } from '@/core/utility/dialog'
+import ScenarioStore from '@/feature/scenario/data'
 
 export default defineComponent({
   name: 'scenario-enigma',
@@ -172,42 +173,17 @@ export default defineComponent({
       type: String as PropType<'scenario' | 'character'>,
       required: true
     },
-    sheetInfo: {
-      type: Object as PropType<ShinobiGamiScenario>,
-      required: true
+    target: {
+      type: String,
+      default: null
     }
   },
   setup(props) {
+    const scenarioState = ScenarioStore.injector()
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
 
     const characterState = CharacterStore.injector()
-    const mediaListState = MediaListStore.injector()
-
-    type WrapEnigma = { idx: number; enigma: Enigma; imageInfo: ImageInfo }
-    const makeWrapList = (): WrapEnigma[] => props.sheetInfo.enigma
-      .map((enigma, idx) => {
-        const media = mediaListState.list.find(m => m.key === enigma.imageKey)
-        return {
-          idx,
-          enigma,
-          imageInfo: media ? ({
-            key: media.key,
-            name: media.data?.name || '',
-            type: 'uploaded',
-            src: media.data?.url || ''
-          }) : ({
-            key: uuidV4(),
-            name: '',
-            type: 'new-file',
-            src: ''
-          })
-        }
-      }) || []
-    const enigmaListWrap = ref<WrapEnigma[]>([])
-    watch(() => props.sheetInfo.enigma, () => {
-      enigmaListWrap.value = makeWrapList()
-    }, { deep: true, immediate: true })
 
     const onUpdateEnigmaImage = (idx: number, value: ImageInfo) => {
       const index = enigmaListWrap.value.findIndex(s => s.idx === idx)
@@ -231,45 +207,68 @@ export default defineComponent({
       imageInfo.key = resultList[0].key
     }
 
-    const uploadImages = async (wrapEnigma: WrapEnigma): Promise<void> => {
+    const uploadImages = async (imageInfo: ImageInfo, enigma: Enigma): Promise<void> => {
       const uploadMediaInfoList: UploadMediaInfo[] = [{
-        key: wrapEnigma.imageInfo.key,
+        key: imageInfo.key,
         url: '',
         dataLocation: 'server',
-        ...getUrlTypes(wrapEnigma.imageInfo.name),
-        rawPath: getFileName(wrapEnigma.imageInfo.name),
+        ...getUrlTypes(imageInfo.name),
+        rawPath: getFileName(imageInfo.name),
         tag: 'scene-background',
-        name: wrapEnigma.imageInfo.name,
-        arrayBuffer: wrapEnigma.imageInfo.src
+        name: imageInfo.name,
+        arrayBuffer: imageInfo.src
       }]
-      await uploadAndKeyReplace(uploadMediaInfoList, wrapEnigma.imageInfo)
-      wrapEnigma.enigma.imageKey = wrapEnigma.imageInfo.key
+      await uploadAndKeyReplace(uploadMediaInfoList, imageInfo)
+      enigma._imageKey = imageInfo.key
     }
 
     const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
 
     const onAdd = () => {
-      console.log('emit onAdd')
+      scenarioState.currentScenario.sheetInfo.enigma.push(({
+        _type: 'enigma',
+        _imageKey: null,
+        menace: '',
+        name: '',
+        notes: '',
+        power: '',
+        target: '',
+        _targetId: '',
+        _open: false,
+        _disarm: false,
+        _disarmMethod: '',
+        _targetSkill: '',
+        _effect: '',
+        chitImageList: [],
+        standImageList: [],
+        currentChitImage: -1,
+        currentStandImage: -1,
+        color: '#3E2723'
+      }))
     }
 
     const onDelete = async (idx: number) => {
       if (!(await questionDialog({
         title: 'エニグマ削除',
-        text: `${props.sheetInfo.enigma[idx].name}を削除します。`,
+        text: `${scenarioState.currentScenario.sheetInfo.enigma[idx].name}を削除します。`,
         confirmButtonText: '削除',
         cancelButtonText: 'キャンセル'
       }))) return
-      const enigma = props.sheetInfo.enigma
-      enigma.splice(idx, 1)
+      scenarioState.currentScenario.sheetInfo.enigma.splice(idx, 1)
     }
 
     const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
       if (type === 'end') {
-        const enigma = props.sheetInfo.enigma
-        const target = enigma.splice(evt.oldIndex || 0, 1)[0]
-        enigma.splice(evt.newIndex || 0, 0, target)
+        const target = scenarioState.currentScenario.sheetInfo.enigma.splice(evt.oldIndex || 0, 1)[0]
+        scenarioState.currentScenario.sheetInfo.enigma.splice(evt.newIndex || 0, 0, target)
       }
     }
+
+    const {
+      enigmaListWrap,
+      updateEnigmaListWrap
+    } = scenarioState.makeWrapLists('enigma', computed(() => props.target))
+    watch(() => props.target, () => updateEnigmaListWrap(props.target))
 
     return {
       uploadImages,
@@ -295,6 +294,10 @@ export default defineComponent({
 .draggable-container {
   @include common.flex-box(column, flex-start, flex-start);
   gap: 0.5em;
+}
+
+h2:deep() {
+  width: calc(var(--sheet-font-size) * 45);
 }
 
 .h-box {
@@ -357,9 +360,7 @@ table {
   &.enigma,
   &.enigma-contents {
     th {
-      width: 4em;
-      min-width: 4em;
-      max-width: 4em;
+      width: 6em;
     }
 
     @include set-column-width("disarmMethod", 10em);
@@ -381,6 +382,10 @@ table {
     width: 100%;
     height: 100%;
     @include common.flex-box(row, center, center);
+
+    &.secret-owner-label {
+      height: auto;
+    }
   }
 
   caption {

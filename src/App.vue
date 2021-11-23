@@ -31,4 +31,11 @@ body {
 button {
   font-size: inherit;
 }
+
+input[type="text"] {
+  height: 2em;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
 </style>

@@ -79,35 +79,57 @@ import UserStore from '@/core/data/user'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import draggable from 'vuedraggable'
 import { questionDialog } from '@/core/utility/dialog'
+import ScenarioStore from '@/feature/scenario/data'
+import CharacterStore from '@/feature/character/data'
 
 export default defineComponent({
   name: 'special-arts-table',
   components: { ViewMode, draggable },
   props: {
-    sheetInfo: {
-      type: Object as PropType<ShinobiGami>,
+    type: {
+      type: String as PropType<'pc' | 'npc' | 'right-hand'>,
       required: true
+    },
+    target: {
+      type: String,
+      default: null
     },
     mode: {
       type: String as PropType<'normal' | 'view' | 'update' | 'insert'>,
       require: true
-    },
-    characterKey: {
-      type: String,
-      required: true
-    },
-    url: {
-      type: String,
-      required: true
-    },
-    sheetViewPass: {
-      type: String,
-      required: true
     }
   },
   setup(props) {
+    const scenarioState = ScenarioStore.injector()
+    const characterState = CharacterStore.injector()
+    const userState = UserStore.injector()
+
+    const sheetViewPass = ref('')
+    const sheetInfoWrap = ref<ShinobiGami | null>(null)
+    watch(() => characterState.characterList.find(c => c.key === props.target)?.data, (data) => {
+      sheetViewPass.value = data?.sheetViewPass || ''
+      sheetInfoWrap.value = data?.sheetInfo || null
+    }, { immediate: true, deep: true })
+
+    const isRawViewMode = ref(false)
+    watch([
+      () => props.type,
+      () => props.target,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
+    ], () => {
+      const { isOwn } = scenarioState.getChitStatus(
+        props.type,
+        props.target,
+        userState.selfUser?.key || null
+      )
+      isRawViewMode.value = props.mode !== 'update' || (userState.selfUser?.type !== 'gm' && !isOwn)
+    }, { immediate: true, deep: true })
+
     const reloadSpecialArts = async () => {
-      const helper = new ShinobigamiHelper(props.url, props.sheetViewPass)
+      const helper = new ShinobigamiHelper(sheetInfoWrap.value?.url || '', sheetViewPass.value)
       if (!helper.isThis()) {
         console.log('is not this')
         return
@@ -116,15 +138,15 @@ export default defineComponent({
       console.log(jsons)
       console.log(rd)
       if (!rd) return
-      const specialArtsList = props.sheetInfo.specialArtsList
-      specialArtsList.splice(0, specialArtsList.length, ...rd.specialArtsList)
+      const specialArtsList = sheetInfoWrap.value?.specialArtsList
+      specialArtsList?.splice(0, specialArtsList?.length || 0, ...rd.specialArtsList)
     }
 
-    const skillList = computed(() => props.sheetInfo.skill.learnedList.map(l => l.name).filter((s, idx, self) => self.findIndex(ss => ss === s) === idx))
+    const skillList = computed(() => sheetInfoWrap.value?.skill.learnedList.map(l => l.name).filter((s, idx, self) => self.findIndex(ss => ss === s) === idx) || [])
 
     const addSpecialArts = () => {
-      const specialArtsList = props.sheetInfo.specialArtsList
-      specialArtsList.push({
+      const specialArtsList = sheetInfoWrap.value?.specialArtsList
+      specialArtsList?.push({
         name: '',
         skill: skillList.value[0] || '',
         effect: '',
@@ -132,15 +154,10 @@ export default defineComponent({
       })
     }
 
-    const userState = UserStore.injector()
-    const isGm = computed(() => userState.selfUser?.type === 'gm')
-    const isOwn = computed(() => userState.selfUser?.refList.some(r => r.key === props.characterKey))
-    const isRawViewMode = computed(() => props.mode !== 'insert' && (props.mode !== 'update' || (!isGm.value && !isOwn.value)))
-
     type WrapSpecialArts = { idx: number; specialArts: SpecialArts; }
-    const makeWrapList = (): WrapSpecialArts[] => props.sheetInfo.specialArtsList.map((specialArts, idx) => ({ idx, specialArts })) || []
+    const makeWrapList = (): WrapSpecialArts[] => sheetInfoWrap.value?.specialArtsList.map((specialArts, idx) => ({ idx, specialArts })) || []
     const specialArtsListWrap = ref<WrapSpecialArts[]>([])
-    watch(() => props.sheetInfo.specialArtsList, () => {
+    watch(() => sheetInfoWrap.value?.specialArtsList, () => {
       specialArtsListWrap.value = makeWrapList()
     }, { deep: true, immediate: true })
 
@@ -149,19 +166,19 @@ export default defineComponent({
     const onDelete = async (idx: number) => {
       if (!(await questionDialog({
         title: '奥義削除',
-        text: `${props.sheetInfo.specialArtsList[idx].name}を削除します。`,
+        text: `${sheetInfoWrap.value?.specialArtsList[idx].name || ''}を削除します。`,
         confirmButtonText: '削除',
         cancelButtonText: 'キャンセル'
       }))) return
-      const specialArtsList = props.sheetInfo.specialArtsList
-      specialArtsList.splice(idx, 1)
+      const specialArtsList = sheetInfoWrap.value?.specialArtsList
+      specialArtsList?.splice(idx, 1)
     }
 
     const onDrag = (type: string, evt: { oldIndex: number | undefined; newIndex: number | undefined; }) => {
       if (type === 'end') {
-        const specialArtsList = props.sheetInfo.specialArtsList
-        const target = specialArtsList.splice((evt.oldIndex || 1) - 1, 1)[0]
-        specialArtsList.splice((evt.newIndex || 1) - 1, 0, target)
+        const specialArtsList = sheetInfoWrap.value?.specialArtsList
+        const target = specialArtsList?.splice((evt.oldIndex || 1) - 1, 1)[0]
+        if (target) specialArtsList?.splice((evt.newIndex || 1) - 1, 0, target)
       }
     }
     return {

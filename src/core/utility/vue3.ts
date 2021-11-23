@@ -81,7 +81,7 @@ export type UpdateDataRequest<T> = {
 };
 
 type CommonStoreDataIf<T> = {
-  insertData: (...c: (Partial<StoreData<T>> & { data: T })[]) => Promise<void>;
+  insertData: (...c: (Partial<StoreData<T>> & { data: T })[]) => Promise<string[]>;
   requestData: () => Promise<void>;
 }
 
@@ -175,8 +175,8 @@ export function commonStoreDataProcess<T, U extends keyof T>(
 
   return {
     requestData,
-    insertData: async (...list): Promise<void> => {
-      await socketStore.sendSocketServerRoundTripRequest<AddDirectRequest<T>, string[]>(
+    insertData: async (...list): Promise<string[]> =>
+      socketStore.sendSocketServerRoundTripRequest<AddDirectRequest<T>, string[]>(
         'db-api-insert',
         {
           collectionSuffix: collectionName,
@@ -185,7 +185,6 @@ export function commonStoreDataProcess<T, U extends keyof T>(
           list
         }
       )
-    }
   }
 }
 
