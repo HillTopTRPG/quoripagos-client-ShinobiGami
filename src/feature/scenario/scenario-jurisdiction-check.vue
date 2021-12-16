@@ -7,8 +7,9 @@
           v-if="isGm"
           :checked="jurisdictionList?.some(o => o === d.raw._characterKey)"
           @change.prevent="$event.target.checked
-          ? pushList(d.raw._characterKey)
-          : removeFilter(jurisdictionList, i => i === d.raw._characterKey)"
+            ? pushList('pc', d.raw._characterKey)
+            : removeFilter(jurisdictionList, i => i === d.raw._characterKey)
+          "
         >
         <input type="checkbox" v-else :checked="jurisdictionList?.some(o => o === d.raw._characterKey)" @click.prevent>
         <span>PC {{ d.raw.name }} {{ d.character?.sheetInfo.characterName || '' }}</span>
@@ -23,8 +24,9 @@
           v-if="isGm"
           :checked="jurisdictionList?.some(o => o === d.raw._characterKey)"
           @change.prevent="$event.target.checked
-            ? pushList(d.raw._characterKey)
-            : removeFilter(jurisdictionList, i => i === d.raw._characterKey)"
+            ? pushList('npc', d.raw._characterKey)
+            : removeFilter(jurisdictionList, i => i === d.raw._characterKey)
+          "
         >
         <input type="checkbox" v-else :checked="jurisdictionList?.some(o => o === d.raw._characterKey)" @click.prevent>
         <span>NPC {{ d.raw.name || '' }}</span>
@@ -39,8 +41,9 @@
           v-if="isGm"
           :checked="jurisdictionList?.some(o => o === d.raw._characterKey)"
           @change.prevent="$event.target.checked
-            ? pushList(d.raw._characterKey)
-            : removeFilter(jurisdictionList, i => i === d.raw._characterKey)"
+            ? pushList('right-hand', d.raw._characterKey)
+            : removeFilter(jurisdictionList, i => i === d.raw._characterKey)
+          "
         >
         <input type="checkbox" v-else :checked="jurisdictionList?.some(o => o === d.raw._characterKey)" @click.prevent>
         <span>腹心 {{ d.raw.name || '' }}</span>
@@ -87,7 +90,8 @@ export default defineComponent({
       required: true
     }
   },
-  setup(props) {
+  emits: ['push'],
+  setup(props, { emit }) {
     const scenarioState = ScenarioStore.injector()
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
@@ -124,9 +128,10 @@ export default defineComponent({
       removeFilter,
       getPcChitStatus: (pc: PC) => scenarioState.getChitStatus('pc', pc._characterKey, userState.selfUser?.key || null),
       getNpcChitStatus: (npc: NPC) => scenarioState.getChitStatus('npc', npc._characterKey, userState.selfUser?.key || null),
-      pushList: (key: string) => {
+      pushList: (type: 'pc' | 'npc' | 'right-hand', key: string) => {
         const list = props.jurisdictionList
         list?.push(key)
+        emit('push', type, key)
       }
     }
   }

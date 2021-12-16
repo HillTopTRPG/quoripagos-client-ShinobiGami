@@ -201,7 +201,7 @@ export default makeStore<Store>('scenario-store', () => {
     type: 'pc' | 'npc' | 'right-hand' | 'enigma',
     target: string,
     selfUserKey: string | null
-  ): { isOwn: boolean; isSecretOpen: boolean; isSheetShow: boolean; } => {
+  ): { isOwn: boolean; isSecretOpen: boolean; isPlacementOpen: boolean; isSheetShow: boolean; } => {
     const sheetInfo = state.list[state.currentIndex].data?.sheetInfo
     if (!sheetInfo) throw new Error()
     const checkList = (list: string[]) =>
@@ -213,7 +213,8 @@ export default makeStore<Store>('scenario-store', () => {
       const isOwn = Boolean(pc && pc._userKey === selfUserKey)
       return {
         isOwn,
-        isSecretOpen: isOwn || Boolean(pc && checkList(pc._openList)),
+        isSecretOpen: isOwn || Boolean(pc && checkList(pc._secretOpenList)),
+        isPlacementOpen: isOwn || Boolean(pc && checkList(pc._placementOpenList)),
         isSheetShow: true
       }
     }
@@ -221,7 +222,8 @@ export default makeStore<Store>('scenario-store', () => {
       const npc = sheetInfo.npc.find(n => n._characterKey === target)
       return {
         isOwn: false,
-        isSecretOpen: Boolean(npc && checkList(npc._openList)),
+        isSecretOpen: Boolean(npc && checkList(npc._secretOpenList)),
+        isPlacementOpen: Boolean(npc && checkList(npc._placementOpenList)),
         isSheetShow: Boolean(npc && !npc.secretcheck && checkList(npc._sheetOpenList))
       }
     }
@@ -230,6 +232,7 @@ export default makeStore<Store>('scenario-store', () => {
       return {
         isOwn: false,
         isSecretOpen: false,
+        isPlacementOpen: false,
         isSheetShow: Boolean(rh && !rh._secretCheck && checkList(rh._sheetOpenList))
       }
     }
@@ -237,6 +240,7 @@ export default makeStore<Store>('scenario-store', () => {
       return {
         isOwn: false,
         isSecretOpen: false,
+        isPlacementOpen: false,
         isSheetShow: true
       }
     }
@@ -277,7 +281,7 @@ export default makeStore<Store>('scenario-store', () => {
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const characterKey = (d as any)._characterKey
-          console.log(name, type, target, characterKey)
+          // console.log(name, type, target, characterKey)
           if (type === 'pc') return target === characterKey
           if (type === 'npc') return target === characterKey
           if (type === 'right-hand') return target === characterKey
@@ -307,7 +311,6 @@ export default makeStore<Store>('scenario-store', () => {
           }
         }) || [];
       (wrapList.value as WrapCharacterData<U>[]).splice(0, wrapList.value.length, ..._wrapList)
-      if (type === _type) console.log(wrapList.value)
     }
 
     const pcListWrap = ref<WrapCharacterData<PC>[]>([])

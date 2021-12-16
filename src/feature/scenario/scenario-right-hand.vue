@@ -4,8 +4,8 @@
     :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
-    :alt-label="isGm ? '入替/削除' : '簡易'"
-    :editable="mode === 'scenario'"
+    :alt-label="'入替/削除'"
+    :editable="isGm && mode === 'scenario'"
     v-model:viewMode="viewMode"
     :use-add="isGm"
     @add="onAdd()"
@@ -61,6 +61,7 @@
                   type="right-hand"
                   :character-key="element.raw._characterKey"
                   :jurisdiction-list="element.raw._sheetOpenList"
+                  @push="(type, cKey) => onPush('sheet-open', type, cKey)"
                 />
               </td>
             </tr>
@@ -105,8 +106,25 @@ export default defineComponent({
 
     const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
 
-    const onAdd = () => {
-      console.log('emit onAdd')
+    const onAdd = async () => {
+      scenarioState.currentScenario.sheetInfo.righthand.push(({
+        _type: 'right-hand',
+        menace: '',
+        name: '',
+        notes: '',
+        _characterKey: await characterState.insertEmptyCharacter(),
+        _secretCheck: true,
+        _hasSheet: false,
+        _sheetOpenList: [],
+        plot: -2,
+        isFumble: false,
+        isActed: false,
+        chitImageList: [],
+        standImageList: [],
+        currentChitImage: -1,
+        currentStandImage: -1,
+        color: '#3E2723'
+      }))
     }
 
     const onDelete = async (idx: number) => {

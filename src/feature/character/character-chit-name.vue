@@ -19,7 +19,7 @@ import { computed, defineComponent, PropType, reactive, ref, watch } from 'vue'
 import MediaListStore from '@/feature/media-list/data'
 import ScenarioStore from '@/feature/scenario/data'
 import CharacterStore from '@/feature/character/data'
-import { NPC, PC, RightHand } from '@/core/utility/shinobigamiScenario'
+import { Enigma, NPC, PC, RightHand } from '@/core/utility/shinobigamiScenario'
 import UserStore from '@/core/data/user'
 
 export default defineComponent({
@@ -63,13 +63,14 @@ export default defineComponent({
       () => scenarioState.currentScenario.sheetInfo.righthand,
       () => scenarioState.currentScenario.sheetInfo.enigma
     ], () => {
-      let c: PC | NPC | RightHand | undefined
+      let c: PC | NPC | RightHand | Enigma | undefined
       const sheetInfo = scenarioState.currentScenario.sheetInfo
       if (props.type === 'pc') {
         c = sheetInfo.pc.find(p => p._characterKey === props.target)
         secretCheck.value = false
 
-        const character = characterState.characterList.find(character => character.key === c?._characterKey)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const character = characterState.characterList.find(character => character.key === (c as any)?._characterKey)
         characterSheetName.value = character?.data?.sheetInfo.characterName || ''
       }
       if (props.type === 'npc') {
@@ -82,24 +83,17 @@ export default defineComponent({
         secretCheck.value = c?._secretCheck || false
         characterSheetName.value = ''
       }
+      if (props.type === 'enigma') {
+        c = sheetInfo.enigma.find(p => p.name === props.target)
+        secretCheck.value = false
+        characterSheetName.value = ''
+      }
       if (c) {
         scenarioName.value = c.name
-        characterSheetName.value = ''
 
         const chitImageUrl = mediaListState.list.find(m => c && m.key === c.chitImageList[c.currentChitImage])?.data?.url
         styleObj['--color'] = c?.color
         styleObj['--chit-image'] = chitImageUrl ? `url('${chitImageUrl}')` : ''
-        oneName.value = scenarioName.value ? scenarioName.value.substr(0, 1) : ''
-      }
-      if (props.type === 'enigma') {
-        const e = sheetInfo.enigma.find(e => e.name === props.target)
-        scenarioName.value = e?.name || ''
-        secretCheck.value = false
-
-        // TODO エニグマの画像もマルチにしたい
-        const imageUrl = mediaListState.list.find(m => m.key === e?._imageKey)?.data?.url
-        styleObj['--chit-image'] = imageUrl ? `url('${imageUrl}')` : ''
-        styleObj['--color'] = e?.color
         oneName.value = scenarioName.value ? scenarioName.value.substr(0, 1) : ''
       }
     }, { immediate: true, deep: true })

@@ -1,7 +1,6 @@
 import { App } from 'vue'
 import battleField from '@/feature/battle-field'
 import character from '@/feature/character'
-import cutIn from '@/feature/cut-in'
 import localSetting from '@/feature/local-setting'
 import memo from '@/feature/memo'
 import persona from '@/feature/persona'
@@ -25,7 +24,6 @@ const Plugin = {
       ],
       [
         battleField,
-        cutIn,
         localSetting,
         memo,
         persona,

@@ -1,15 +1,25 @@
 <template>
   <template v-for="n in list" :key="n.key">
-    <div class="scene" v-if="n.scene" @click="onSelectScene(n.key)" :class="currentKey === n.key ? 'selected' : ''">
-      <label>
-        <span>名前</span>
-        <input type="text" v-model="n.scene.name">
+    <div class="scene" v-if="n.scene">
+      <label class="image-index-radio-container">
+        <input
+          type="radio"
+          :id="n.imageInfo.key"
+          v-if="n.scene?.backgroundImage"
+          :name="`current-scene`"
+          @change="onSelectScene(n.key)"
+          :checked="currentKey === n.key"
+          :value="n.key"
+        >
       </label>
-      <label>
-        <span>背景</span>
-        <image-input :image-info="n.imageInfo" type="back" @update="value => onUpdateImage(n.key, value)" />
-        <button :disabled="n.imageInfo.type !== 'new-file' || !n.imageInfo.name" @click="uploadImages(n)">Image Upload</button>
-      </label>
+      <image-input
+        :key="n.imageInfo.key"
+        :image-info="n.imageInfo"
+        type="back"
+        @update="value => onUpdateImage(n.key, value)"
+        @delete="onDelete(n.key)"
+      />
+      <button v-if="n.imageInfo.type === 'new-file'" :disabled="!n.imageInfo.name" @click="uploadImages(n)">Image Upload</button>
     </div>
   </template>
   <button @click="onAddScene()">追加</button>
@@ -30,6 +40,7 @@ import MediaListStore, { getUrlTypes } from '@/feature/media-list/data'
 import { v4 as uuidV4 } from 'uuid'
 import ImageInput from '@/feature/character/image-input.vue'
 import { getFileName } from '@/core/utility/PrimaryDataUtility'
+import { removeFilter } from '@/core/utility/typescript'
 
 export default defineComponent({
   name: 'scene-pane',
@@ -61,7 +72,7 @@ export default defineComponent({
       }
     })
     const wrapSceneList = ref<WrapScene[]>(makeWrapList())
-    watch(() => state.list, () => {
+    watch([() => state.list, () => mediaListState.list], () => {
       wrapSceneList.value = makeWrapList()
     }, { deep: true })
 
@@ -125,7 +136,28 @@ export default defineComponent({
       onAddScene,
       uploadImages,
       currentKey,
-      onSelectScene
+      onSelectScene,
+      onDelete: (key: string) => {
+        console.log(roomSettingState.roomSetting?.sceneKey === key, roomSettingState.roomSetting?.sceneKey, key)
+        if (roomSettingState.roomSetting?.sceneKey === key) {
+          // TODO 選択されているシーンをずらす
+          const idx = wrapSceneList.value.findIndex(d => d.key === key)
+          if (wrapSceneList.value.length === 1) {
+            console.log('ずらす - null')
+            roomSettingState.roomSetting.sceneKey = null
+          } else if (idx === wrapSceneList.value.length - 1) {
+            console.log(`ずらす - まえ\n${roomSettingState.roomSetting.sceneKey}\n${wrapSceneList.value[idx - 1].key}`)
+            roomSettingState.roomSetting.sceneKey = wrapSceneList.value[idx - 1].key
+          } else {
+            console.log(`ずらす - どう\n${roomSettingState.roomSetting.sceneKey}\n${wrapSceneList.value[idx].key}`)
+            roomSettingState.roomSetting.sceneKey = wrapSceneList.value[idx + 1].key
+          }
+        }
+        const d1 = removeFilter(wrapSceneList.value, d => d.key === key)
+        // const d2 = removeFilter(state.list, d => d.key === key)
+        console.log(d1.length)
+        state.deleteData([key])
+      }
     }
   }
 })
@@ -135,7 +167,7 @@ export default defineComponent({
 @use "../../components/common";
 
 .scene {
-  @include common.flex-box(column, flex-start, flex-start);
+  @include common.flex-box(column, center, flex-start);
 
   &.selected {
     border: solid 1px red;

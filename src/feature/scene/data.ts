@@ -14,6 +14,7 @@ type Store = {
   currentScene: Scene | null;
   requestData: () => Promise<void>;
   insertData: (...c: (Partial<StoreData<Scene>> & { data: Scene })[]) => Promise<string[]>;
+  deleteData: (keys: string[]) => Promise<void>;
 }
 
 export default makeStore<Store>('scene-store', () => {
@@ -24,7 +25,7 @@ export default makeStore<Store>('scene-store', () => {
 
   const roomSettingState = RoomSettingStore.injector()
 
-  const { requestData, insertData } = commonStoreDataProcess(
+  const { requestData, insertData, deleteData } = commonStoreDataProcess(
     state.list,
     'scene',
     [
@@ -50,6 +51,7 @@ export default makeStore<Store>('scene-store', () => {
       return state.list.find(s => s.key === roomSettingState.roomSetting?.sceneKey)?.data || null
     },
     requestData,
+    deleteData,
     insertData
   }
 })

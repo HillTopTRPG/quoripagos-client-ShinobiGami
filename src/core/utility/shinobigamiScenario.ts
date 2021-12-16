@@ -24,7 +24,8 @@ export type PC = VelocityChitBase & ChitBase & ActorBase & {
   name: string;
   recommend: string;
   secret: string;
-  _openList: string[];
+  _secretOpenList: string[];
+  _placementOpenList: string[];
   _characterKey: string;
   _userKey: string;
 }
@@ -49,8 +50,6 @@ export type RightHand = VelocityChitBase & ChitBase & ActorBase & {
 
 export type Enigma = ChitBase & ActorBase & {
   _type: 'enigma';
-  // 画像
-  _imageKey: string | null;
   // 脅威度
   menace: string;
   // 偽装
@@ -86,6 +85,7 @@ export type Summary = {
   contents: string;
   secret: boolean;
   title: string;
+  _imageKey: string | null;
 }
 
 export type ScenarioCharacter = {

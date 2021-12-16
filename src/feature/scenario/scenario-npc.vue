@@ -5,10 +5,10 @@
     :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
-    :alt-label="isGm ? '入替/削除' : '簡易'"
-    :editable="mode === 'scenario'"
+    :alt-label="'入替/削除'"
+    :editable="isGm && mode === 'scenario'"
     v-model:viewMode="viewMode"
-    :use-add="isGm"
+    :use-add="isGm && mode === 'scenario'"
     @add="onAdd()"
   />
   <draggable
@@ -36,7 +36,7 @@
                 <input type="text" :id="`npc-${element.idx}-name`" v-if="isGm && mode === 'scenario'" v-model="element.raw.name">
                 <template v-else>{{ element.raw.name }}</template>
               </td>
-              <th><label :for="isGm ? `npc-${element.idx}-secretcheck` : ''">秘匿</label></th>
+              <th><label :for="isGm ? `npc-${element.idx}-secretcheck` : ''">存在秘匿</label></th>
               <td class="secret-check">
                 <input type="checkbox" :id="`npc-${element.idx}-secretcheck`" v-if="isGm" v-model="element.raw.secretcheck">
                 <input type="checkbox" v-else :checked="element.raw.secretcheck" @click.prevent>
@@ -86,18 +86,33 @@
                   type="npc"
                   :character-key="element.raw._characterKey"
                   :jurisdiction-list="element.raw._sheetOpenList"
+                  @push="(type, cKey) => onPush('sheet-open', type, cKey)"
                 />
               </td>
             </tr>
             <tr v-if="!element.raw.secretcheck" v-show="viewMode !== 'alt'">
-              <th>この秘密の保持者</th>
+              <th>この秘密の<br />保持者</th>
               <td class="secret-owner" :colspan="3">
                 <scenario-jurisdiction-check
-                  :types="['pc', 'npc']"
+                  :types="['pc', 'npc', 'right-hand']"
                   :mode="mode"
                   type="npc"
                   :character-key="element.raw._characterKey"
-                  :jurisdiction-list="element.raw._openList"
+                  :jurisdiction-list="element.raw._secretOpenList"
+                  @push="(type, cKey) => onPush('secret', type, cKey)"
+                />
+              </td>
+            </tr>
+            <tr v-if="!element.raw.secretcheck" v-show="viewMode !== 'alt'">
+              <th>この居所の<br />保持者</th>
+              <td class="secret-owner" :colspan="3">
+                <scenario-jurisdiction-check
+                  :types="['pc', 'npc', 'right-hand']"
+                  :mode="mode"
+                  type="npc"
+                  :character-key="element.raw._characterKey"
+                  :jurisdiction-list="element.raw._placementOpenList"
+                  @push="(type, cKey) => onPush('placement', type, cKey)"
                 />
               </td>
             </tr>
@@ -153,7 +168,8 @@ export default defineComponent({
         recommend: '',
         secret: '',
         secretcheck: true,
-        _openList: [],
+        _secretOpenList: [],
+        _placementOpenList: [],
         _characterKey: await characterState.insertEmptyCharacter(),
         _hasSheet: false,
         _sheetOpenList: [],

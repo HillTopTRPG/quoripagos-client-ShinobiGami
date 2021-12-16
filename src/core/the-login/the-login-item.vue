@@ -6,11 +6,11 @@
     <template #room-info>
       <div class="content">
         <template v-if="r.detail">
-          <button class="room-btn" @click="selectRoom(r.roomNo)" v-show="r.roomNo !== selectedRoomNo">入室</button>
-          <button class="room-btn" @click="deleteRoom(r.roomNo)" v-show="r.roomNo !== selectedRoomNo">削除</button>
+          <button class="room-btn" type="button" @click="selectRoom(r.roomNo)" v-show="r.roomNo !== selectedRoomNo">入室</button>
+          <button class="room-btn" type="button" @click="deleteRoom(r.roomNo)" v-show="r.roomNo !== selectedRoomNo">削除</button>
           {{ r.detail.roomName }}
           <template v-if="r.roomNo === selectedRoomNo">
-            <button class="un-select-btn" @click="unSelectRoom()">選択解除</button>
+            <button class="un-select-btn" type="button" @click="unSelectRoom()">選択解除</button>
           </template>
         </template>
         <template v-else-if="r.status === 'initial-touched'">
@@ -20,7 +20,7 @@
           <template v-else>(creating)</template>
         </template>
         <template v-else>
-          <button class="room-btn" @click="touchRoom(r.roomNo)">作成</button>
+          <button class="room-btn" type="button" @click="touchRoom(r.roomNo)">作成</button>
         </template>
       </div>
       <span class="date-time-set" v-if="r.status !== 'none'">
@@ -36,24 +36,51 @@
     <template #room-operation>
       <template v-if="r.roomNo === selectedRoomNo">
         <template v-if="!r.detail">
-          <input type="password" placeholder="入室パスワード" v-model="roomPassword">
-          <button class="room-btn" :disabled="!roomName" @click="createRoom(r.roomNo, roomName, roomPassword)">作成</button>
+          <input
+            type="password"
+            placeholder="入室パスワード"
+            v-model="roomPassword"
+            autocomplete="new-password"
+            name="room-password-new"
+          >
+          <button class="room-btn" type="button" :disabled="!roomName" @click="createRoom(r.roomNo, roomName, roomPassword)">作成</button>
         </template>
         <template v-else>
           <template v-if="lastRoomLoginType === ''">
-            <input ref="roomPasswordInputElm" type="password" placeholder="部屋パスワード" v-model="roomPassword">
-            <button class="room-btn" @click="loginRoom(r.roomNo, roomPassword)">確認</button>
+            <input
+              ref="roomPasswordInputElm"
+              type="password"
+              placeholder="部屋パスワード"
+              v-model="roomPassword"
+              autocomplete="new-password"
+              name="room-password"
+            >
+            <button class="room-btn" type="button" @click="loginRoom(r.roomNo, roomPassword)">確認</button>
           </template>
           <template v-else>
-            <input ref="userNameInputElm" type="text" v-model="userName" placeholder="[必須] ユーザー名">
+            <input
+              ref="userNameInputElm"
+              type="text"
+              v-model="userName"
+              placeholder="[必須] ユーザー名"
+              autocomplete="username"
+              name="username"
+            >
             <!-- ユーザー選択 -->
             <ul v-if="userList.length">
               <li v-for="u in userList" :key="u.name">
-                <button v-touch="() => selectUser(u.name, u.type)">{{ u.name }}</button>
+                <button type="button" v-touch="() => selectUser(u.name, u.type)">{{ u.name }}</button>
               </li>
             </ul>
-            <input ref="userPasswordInputElm" type="password" placeholder="ユーザーパスワード" v-model="userPassword">
-            <button @click="loginUser(userName, userType, userPassword)" :disabled="!userName">ユーザログイン</button>
+            <input
+              ref="userPasswordInputElm"
+              type="password"
+              placeholder="ユーザーパスワード"
+              v-model="userPassword"
+              autocomplete="current-password"
+              name="password"
+            >
+            <button type="button" @click="loginUser(userName, userType, userPassword)" :disabled="!userName">ユーザログイン</button>
             <select ref="userTypeSelectElm" v-model="userType">
               <option value="pl">プレイヤー</option>
               <option value="gm">ゲームマスター</option>

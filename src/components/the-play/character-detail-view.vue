@@ -24,6 +24,11 @@
             <div class="personal">{{ sheetInfoWrap?.belief }} - {{ sheetInfoWrap?.cover }} - {{ sheetInfoWrap?.age }} - {{ sheetInfoWrap?.sex }}</div>
           </div>
         </div>
+
+        <div class="part-wrap">
+          <scenario-pc :target="target" mode="character" />
+        </div>
+
         <div class="backgrounds">
           <div class="background" v-for="(bg, idx) in sheetInfoWrap?.backgroundList" :key="idx">{{ bg.name }}</div>
         </div>
@@ -58,10 +63,11 @@ import NinjaArtsTable from '@/components/shinobi-gami/ninja-arts-table.vue'
 import { ShinobiGami, SkillTable } from '@/core/utility/shinobigami'
 import { ActorBase } from '@/core/utility/shinobigamiScenario'
 import ScenarioStore from '@/feature/scenario/data'
+import ScenarioPc from '@/feature/scenario/scenario-pc.vue'
 
 export default defineComponent({
   name: 'character-detail-view',
-  components: { NinjaArtsTable, SkillTableSet },
+  components: { ScenarioPc, NinjaArtsTable, SkillTableSet },
   props: {
     type: {
       type: String as PropType<'pc' | 'npc' | 'right-hand'>,
@@ -149,6 +155,9 @@ export default defineComponent({
   width: 100%;
   background-color: var(--color);
   color: white;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 
   h2 {
     margin: 0;
@@ -195,6 +204,7 @@ export default defineComponent({
     border: 1px solid gray;
     border-radius: 5px;
     padding: 0 0.5rem;
+    cursor: pointer;
   }
 }
 

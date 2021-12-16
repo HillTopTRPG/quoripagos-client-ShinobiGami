@@ -1,11 +1,11 @@
 <template>
   <view-mode
-    title="説明"
-    :use-simple="isGm"
+    title="説明・カットイン"
+    :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
-    :alt-label="isGm ? '入替/削除' : '簡易'"
-    :editable="true"
+    :alt-label="'入替/削除'"
+    :editable="isGm && mode === 'scenario'"
     v-model:viewMode="viewMode"
     :use-add="isGm"
     @add="onAdd()"
@@ -47,6 +47,32 @@
                 <template v-else>{{ element.raw.contents }}</template>
               </td>
             </tr>
+            <tr v-if="isGm">
+              <th><label>画像</label></th>
+              <td :colspan="isGm ? 1 : 3">
+                <div class="h-box summary-image">
+                  <image-input
+                    :key="element.imageInfo.key"
+                    :image-info="element.imageInfo"
+                    type="chit"
+                    :deletable="false"
+                    @update="value => onUpdateImage(element.idx, value)"
+                  />
+                  <button
+                    v-if="isGm && element.imageInfo.type === 'new-file' && element.imageInfo.name"
+                    @click="uploadImages(element.imageInfo, element.raw)"
+                  >Image Upload</button>
+                  <button
+                    v-if="isGm && element.imageInfo.type !== 'new-file'"
+                    @click="deleteImage(element.raw)"
+                  >削除</button>
+                </div>
+              </td>
+              <th v-if="isGm"><label>カットイン</label></th>
+              <td v-if="isGm">
+                <button @click="sendCutIn(element.raw)">全員に表示</button>
+              </td>
+            </tr>
           </template>
           </tbody>
         </table>
@@ -63,12 +89,19 @@ import draggable from 'vuedraggable'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import { questionDialog } from '@/core/utility/dialog'
 import ScenarioStore from '@/feature/scenario/data'
+import { ImageInfo, UploadMediaInfo, UploadMediaRequest, UploadMediaResponse } from '@/feature/character/data'
+import SocketStore from '@/core/data/socket'
+import { Summary } from '@/core/utility/shinobigamiScenario'
+import MediaListStore, { getUrlTypes } from '@/feature/media-list/data'
+import { getFileName } from '@/core/utility/PrimaryDataUtility'
+import ImageInput from '@/feature/character/image-input.vue'
 
 export default defineComponent({
   name: 'scenario-summary',
-  components: { ViewMode, draggable },
+  components: { ImageInput, ViewMode, draggable },
   setup() {
     const scenarioState = ScenarioStore.injector()
+    const mediaListState = MediaListStore.injector()
     const summaryList = scenarioState.currentScenario.sheetInfo.summary
     const elmId = uuidV4()
     const userState = UserStore.injector()
@@ -77,7 +110,12 @@ export default defineComponent({
     const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
 
     const onAdd = () => {
-      console.log('emit onAdd')
+      scenarioState.currentScenario.sheetInfo.summary.push(({
+        contents: '',
+        secret: true,
+        title: '',
+        _imageKey: null
+      }))
     }
 
     const onDelete = async (idx: number) => {
@@ -101,6 +139,60 @@ export default defineComponent({
       summaryListWrap
     } = scenarioState.makeWrapLists()
 
+    const onUpdateImage = (idx: number, value: ImageInfo) => {
+      const index = summaryListWrap.value.findIndex(s => s.idx === idx)
+      if (index > -1) {
+        const imageInfo = summaryListWrap.value[index].imageInfo
+        if (imageInfo.type === 'uploaded') {
+          imageInfo.type = 'new-file'
+          imageInfo.key = uuidV4()
+        }
+        imageInfo.name = value.name
+        imageInfo.src = value.src
+      }
+    }
+
+    const socketStore = SocketStore.injector()
+    const uploadAndKeyReplace = async (uploadMediaInfoList: UploadMediaInfo[], imageInfo: ImageInfo) => {
+      const resultList = await socketStore.sendSocketServerRoundTripRequest<UploadMediaRequest, UploadMediaResponse>(
+        'media-api-upload',
+        { uploadMediaInfoList, option: {} }
+      )
+      imageInfo.key = resultList[0].key
+    }
+
+    const uploadImages = async (imageInfo: ImageInfo, summary: Summary): Promise<void> => {
+      const uploadMediaInfoList: UploadMediaInfo[] = [{
+        key: imageInfo.key,
+        url: '',
+        dataLocation: 'server',
+        ...getUrlTypes(imageInfo.name),
+        rawPath: getFileName(imageInfo.name),
+        tag: 'cut-in',
+        name: imageInfo.name,
+        arrayBuffer: imageInfo.src
+      }]
+      await uploadAndKeyReplace(uploadMediaInfoList, imageInfo)
+      summary._imageKey = imageInfo.key
+    }
+
+    const sendCutIn = (summary: Summary) => {
+      const media = mediaListState.list.find(m => m.key === summary._imageKey)
+      socketStore.sendSocketClientRequest<{ title: string, text: string, imageUrl: string | null, targetList?: string[] }>(
+        'view-cut-in',
+        'room',
+        {
+          title: summary.title,
+          text: summary.contents,
+          imageUrl: media ? media.data?.url || null : null
+        }
+      )
+    }
+
+    const deleteImage = (summary: Summary) => {
+      summary._imageKey = null
+    }
+
     return {
       elmId,
       summaryListWrap,
@@ -108,7 +200,11 @@ export default defineComponent({
       viewMode,
       onAdd,
       onDelete,
-      onDrag
+      onDrag,
+      onUpdateImage,
+      uploadImages,
+      sendCutIn,
+      deleteImage
     }
   }
 })
@@ -167,7 +263,7 @@ table {
     resize: vertical;
   }
 
-  .enigma-image :first-child {
+  .summary-image :first-child {
     flex: 1;
   }
 
@@ -185,7 +281,7 @@ table {
     }
 
     .secret {
-      width: 3em;
+      width: 7em;
     }
   }
 

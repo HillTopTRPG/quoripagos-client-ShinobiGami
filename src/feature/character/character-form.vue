@@ -16,7 +16,6 @@
     <template v-for="(n, idx) in chitImageList" :key="n.key">
       <div :class="[n.type, n.name, n.src]">
         <label :for="n.key">コマ画像{{ idx + 1 }}</label>
-        <label :for="n.key" class="message" v-if="n.type === 'new-file' && n.name">未アップロード</label>
         <label class="image-index-radio-container">
           <input
             type="radio"
@@ -29,6 +28,7 @@
           >
         </label>
         <image-input
+          :key="n.key"
           :image-info="n"
           type="chit"
           @update="value => onUpdateImage('chit', n.key, value)"
@@ -42,7 +42,6 @@
     <template v-for="(n, idx) in standImageList" :key="n.key">
       <div :class="[n.type, n.name, n.src]">
         <label :for="n.key">立ち絵画像{{ idx + 1 }}</label>
-        <label :for="n.key" class="message" v-if="n.type === 'new-file' && n.name">未アップロード</label>
         <label class="image-index-radio-container">
           <input
             type="radio"
@@ -55,6 +54,7 @@
           >
         </label>
         <image-input
+          :key="n.key"
           :image-info="n"
           type="stand"
           @update="value => onUpdateImage('stand', n.key, value)"
@@ -69,7 +69,7 @@
     <div class="url-block">
       <label class="url">
         <span>キャラクターシート倉庫URL</span>
-        <input v-if="isOwn" type="text" v-model="url" placeholder="https://character-sheets.appspot.com/shinobigami/edit.html?key=">
+        <input v-if="isOwn" type="text" autocomplete="url" v-model="url" placeholder="https://character-sheets.appspot.com/shinobigami/edit.html?key=">
         <template v-else>
           <a v-if="url" :href="url" target="_blank" rel="noopener noreferrer">{{ character?.data?.sheetInfo.characterName || character?.data.name }}</a>
         </template>
@@ -168,7 +168,6 @@ export default defineComponent({
       else if (npc) hasSheet.value = npc._hasSheet
       else if (rightHand) hasSheet.value = rightHand._hasSheet
       else hasSheet.value = true
-      console.log(hasSheet.value)
       colorWrap.value = obj?.color || null
     }, { immediate: true, deep: true })
     watch(colorWrap, () => {
@@ -379,12 +378,6 @@ export default defineComponent({
 
 <style scoped lang="scss">
 @use "../../components/common";
-
-.message {
-  width: 100%;
-  text-align: left;
-  font-weight: bold;
-}
 
 .v-box {
   @include common.flex-box(column, flex-start, flex-start, wrap);

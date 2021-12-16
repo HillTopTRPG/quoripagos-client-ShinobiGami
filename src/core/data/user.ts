@@ -48,6 +48,7 @@ export type ClientUserData = {
   name: string;
   type: UserType;
   login: number;
+  socketIdList: string[];
 }
 
 type Store = {

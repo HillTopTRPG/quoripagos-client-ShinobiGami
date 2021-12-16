@@ -4,6 +4,7 @@
       <span>キャラクターシート倉庫URL</span>
       <input
         type="text"
+        autocomplete="url"
         v-model="scenario.url"
         placeholder="https://character-sheets.appspot.com/sgScenario/edit.html?key="
       >
@@ -100,7 +101,8 @@ export default defineComponent({
       await rd.pc
         .map(pc => async () => {
           pc._type = 'pc'
-          pc._openList = []
+          pc._secretOpenList = []
+          pc._placementOpenList = []
           pc._userKey = ''
           pc.plot = -2
           pc.isFumble = false
@@ -125,7 +127,8 @@ export default defineComponent({
       await rd.npc
         .map(npc => async () => {
           npc._type = 'npc'
-          npc._openList = []
+          npc._secretOpenList = []
+          npc._placementOpenList = []
           npc._hasSheet = false
           npc._sheetOpenList = []
           npc.plot = -2
@@ -175,17 +178,21 @@ export default defineComponent({
 
       rd.enigma.forEach(enigma => {
         enigma._type = 'enigma'
-        enigma._imageKey = null
+        enigma._targetId = ''
+        enigma._open = false
         enigma._disarm = false
         enigma._disarmMethod = ''
         enigma._targetSkill = ''
         enigma._effect = ''
-        enigma._open = false
         enigma.chitImageList = []
         enigma.standImageList = []
         enigma.currentChitImage = -1
         enigma.currentStandImage = -1
         enigma.color = '#3E2723'
+      })
+
+      rd.summary.forEach(summary => {
+        summary._imageKey = null
       })
 
       scenario.value.sheetInfo = rd

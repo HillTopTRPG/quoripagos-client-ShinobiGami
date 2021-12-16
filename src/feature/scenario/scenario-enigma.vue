@@ -4,8 +4,8 @@
     :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
-    :alt-label="isGm ? '入替/削除' : '簡易'"
-    :editable="mode === 'scenario'"
+    :alt-label="'入替/削除'"
+    :editable="isGm && mode === 'scenario'"
     v-model:viewMode="viewMode"
     :use-add="isGm"
     @add="onAdd()"
@@ -63,14 +63,26 @@
             <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-open` : ''">公開</label></th>
             <td class="open">
               <div class="wrap">
-                <input type="checkbox" :id="`enigma-${element.idx}-open`" v-if="isGm && mode === 'scenario'" v-model="element.raw._open">
+                <input
+                  type="checkbox"
+                  :id="`enigma-${element.idx}-open`"
+                  v-if="isGm && mode === 'scenario'"
+                  v-model="element.raw._open"
+                  @change="onChangeOpen(element.idx, $event)"
+                >
                 <input type="checkbox" v-else :checked="element.raw._open" @click.prevent>
               </div>
             </td>
             <th class="disarm-th"><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-disarm` : ''">解除</label></th>
             <td class="disarm">
               <div class="wrap">
-                <input type="checkbox" :id="`enigma-${element.idx}-disarm`" v-if="isGm && mode === 'scenario'" v-model="element.raw._disarm">
+                <input
+                  type="checkbox"
+                  :id="`enigma-${element.idx}-disarm`"
+                  v-if="isGm && mode === 'scenario'"
+                  v-model="element.raw._disarm"
+                  @change="onDisarm(element.idx, $event)"
+                >
                 <input type="checkbox" v-else :checked="element.raw._disarm" @click.prevent>
               </div>
             </td>
@@ -106,9 +118,18 @@
             </td>
             <th class="bind-th"><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-targetId` : ''">バインドPC</label></th>
             <td class="target">
-              <input type="text" :id="`enigma-${element.idx}-targetId`" v-if="isGm && mode === 'scenario'" v-model="element.raw._targetId">
+              <select :id="`enigma-${element.idx}-targetId`" v-if="isGm && mode === 'scenario'" v-model="element.raw._targetId">
+                <option value="">選択なし</option>
+                <template v-for="d in pcListWrap" :key="d.raw._characterKey">
+                  <option :value="d.raw._characterKey">PC {{ d.raw.name }} {{ d.character.sheetInfo.characterName }}</option>
+                </template>
+              </select>
               <template v-else>
-                <template v-if="isGm || element.raw._open">{{ element.raw._targetId || '指定なし' }}</template>
+                <template v-if="isGm || element.raw._open">{{
+                  pcListWrap.find(d => d.raw._characterKey === element.raw._targetId)
+                    ? `PC ${pcListWrap.find(d => d.raw._characterKey === element.raw._targetId)?.raw.name || ''} ${pcListWrap.find(d => d.raw._characterKey === element.raw._targetId)?.character.sheetInfo.characterName || ''}`
+                    : '選択なし'
+                }}</template>
               </template>
             </td>
           </tr>
@@ -125,19 +146,15 @@
             <tr>
               <th><label :for="isGm && mode === 'scenario' ? `enigma-${element.idx}-effect` : ''">効果</label></th>
               <td class="effect" colspan="7">
-                <textarea :id="`enigma-${element.idx}-effect`" v-if="isGm && mode === 'scenario'" v-model="element.raw._effect"></textarea>
+                <textarea
+                  :id="`enigma-${element.idx}-effect`"
+                  v-if="isGm && mode === 'scenario'"
+                  v-model="element.raw._effect"
+                  placeholder="ゲーム中に表示される情報をこちらに記載してください。"
+                ></textarea>
                 <template v-else>
                   <template v-if="isGm || element.raw._open">{{ element.raw._effect || '記載なし' }}</template>
                 </template>
-              </td>
-            </tr>
-            <tr v-if="isGm">
-              <th><label>画像</label></th>
-              <td colspan="7">
-                <div class="h-box enigma-image">
-                  <image-input :image-info="element.imageInfo" :key="element.imageInfo.key" type="chit" @update="value => onUpdateEnigmaImage(element.idx, value)" />
-                  <button :disabled="element.imageInfo.type !== 'new-file' || !element.imageInfo.name" @click="uploadImages(element.imageInfo, element.raw)">Image Upload</button>
-                </div>
               </td>
             </tr>
           </template>
@@ -150,24 +167,21 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType, ref, watch } from 'vue'
-import { Enigma } from '@/core/utility/shinobigamiScenario'
 import UserStore from '../../core/data/user'
-import CharacterStore, { ImageInfo, UploadMediaInfo, UploadMediaRequest, UploadMediaResponse } from '../character/data'
+import CharacterStore from '../character/data'
 import { removeFilter } from '@/core/utility/typescript'
-import SocketStore from '@/core/data/socket'
-import { getUrlTypes } from '@/feature/media-list/data'
-import { getFileName } from '@/core/utility/PrimaryDataUtility'
-import { v4 as uuidV4 } from 'uuid'
-import ImageInput from '@/feature/character/image-input.vue'
 import { SkillTable } from '@/core/utility/shinobigami'
 import draggable from 'vuedraggable'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import { questionDialog } from '@/core/utility/dialog'
 import ScenarioStore from '@/feature/scenario/data'
+import MediaListStore from '@/feature/media-list/data'
+import { Enigma } from '@/core/utility/shinobigamiScenario'
+import SocketStore from '@/core/data/socket'
 
 export default defineComponent({
   name: 'scenario-enigma',
-  components: { ViewMode, ImageInput, draggable },
+  components: { ViewMode, draggable },
   props: {
     mode: {
       type: String as PropType<'scenario' | 'character'>,
@@ -185,49 +199,11 @@ export default defineComponent({
 
     const characterState = CharacterStore.injector()
 
-    const onUpdateEnigmaImage = (idx: number, value: ImageInfo) => {
-      const index = enigmaListWrap.value.findIndex(s => s.idx === idx)
-      if (index > -1) {
-        const imageInfo = enigmaListWrap.value[index].imageInfo
-        if (imageInfo.type === 'uploaded') {
-          imageInfo.type = 'new-file'
-          imageInfo.key = uuidV4()
-        }
-        imageInfo.name = value.name
-        imageInfo.src = value.src
-      }
-    }
-
-    const socketStore = SocketStore.injector()
-    const uploadAndKeyReplace = async (uploadMediaInfoList: UploadMediaInfo[], imageInfo: ImageInfo) => {
-      const resultList = await socketStore.sendSocketServerRoundTripRequest<UploadMediaRequest, UploadMediaResponse>(
-        'media-api-upload',
-        { uploadMediaInfoList, option: {} }
-      )
-      imageInfo.key = resultList[0].key
-    }
-
-    const uploadImages = async (imageInfo: ImageInfo, enigma: Enigma): Promise<void> => {
-      const uploadMediaInfoList: UploadMediaInfo[] = [{
-        key: imageInfo.key,
-        url: '',
-        dataLocation: 'server',
-        ...getUrlTypes(imageInfo.name),
-        rawPath: getFileName(imageInfo.name),
-        tag: 'scene-background',
-        name: imageInfo.name,
-        arrayBuffer: imageInfo.src
-      }]
-      await uploadAndKeyReplace(uploadMediaInfoList, imageInfo)
-      enigma._imageKey = imageInfo.key
-    }
-
     const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
 
     const onAdd = () => {
       scenarioState.currentScenario.sheetInfo.enigma.push(({
         _type: 'enigma',
-        _imageKey: null,
         menace: '',
         name: '',
         notes: '',
@@ -266,14 +242,91 @@ export default defineComponent({
 
     const {
       enigmaListWrap,
-      updateEnigmaListWrap
+      updateEnigmaListWrap,
+      pcListWrap
     } = scenarioState.makeWrapLists('enigma', computed(() => props.target))
     watch(() => props.target, () => updateEnigmaListWrap(props.target))
 
+    const mediaListState = MediaListStore.injector()
+    const socketStore = SocketStore.injector()
+
+    const onChangeOpen = async (idx: number, event: Event) => {
+      if (!(event.target instanceof HTMLInputElement) || !event.target?.checked) return
+
+      const enigma: Enigma | undefined = enigmaListWrap.value[idx]?.raw
+      if (!(await questionDialog({
+        title: 'エニグマ情報公開',
+        text: `${enigma?.name || ''}の情報を全員にカットインで表示します。`,
+        confirmButtonText: '表示する',
+        cancelButtonText: '表示しない'
+      }))) return
+
+      const media = mediaListState.list.find(m => m.key === enigma?.chitImageList[enigma?.currentChitImage])
+      const url = media?.data?.url
+      const bindTarget = scenarioState.currentScenario.sheetInfo.pc.find(p => p._characterKey === enigma?._targetId)
+      const bindTargetName = bindTarget ? `PC ${bindTarget.name}` : 'なし'
+
+      await socketStore.sendSocketClientRequest<{ title: string, text: string, imageUrl: string | null, targetList?: string[] }>(
+        'view-cut-in',
+        'room',
+        {
+          title: 'エニグマの情報が公開されました。',
+          text: [
+            '<table>',
+            `<tr><th>偽装</th><td>${enigma?.name}</td></tr>`,
+            `<tr><th>戦力</th><td>${enigma?.power}</td></tr>`,
+            `<tr><th>解除方法</th><td>${enigma?._disarmMethod || 'なし'}</td></tr>`,
+            `<tr><th>指定特技</th><td>${enigma?._targetSkill || 'なし'}</td></tr>`,
+            `<tr><th>脅威度</th><td>${enigma?.menace}</td></tr>`,
+            `<tr><th>バインド</th><td>${bindTargetName}</td></tr>`,
+            `<tr><th>効果</th><td>${enigma?._effect}</td></tr>`,
+            '</table>'
+          ].join(''),
+          imageUrl: url || null
+        }
+      )
+    }
+
+    const onDisarm = async (idx: number, event: Event) => {
+      if (!(event.target instanceof HTMLInputElement) || !event.target?.checked) return
+
+      const enigma: Enigma | undefined = enigmaListWrap.value[idx]?.raw
+      if (!(await questionDialog({
+        title: 'エニグマ解除',
+        text: `${enigma?.name || ''}の解除を全員にカットインでお知らせします。`,
+        confirmButtonText: '表示する',
+        cancelButtonText: '表示しない'
+      }))) return
+
+      const media = mediaListState.list.find(m => m.key === enigma?.chitImageList[enigma?.currentChitImage])
+      const url = media?.data?.url
+      const bindTarget = scenarioState.currentScenario.sheetInfo.pc.find(p => p._characterKey === enigma?._targetId)
+      const bindTargetName = bindTarget ? `PC ${bindTarget.name}` : 'なし'
+
+      await socketStore.sendSocketClientRequest<{ title: string, text: string, imageUrl: string | null, targetList?: string[] }>(
+        'view-cut-in',
+        'room',
+        {
+          title: 'エニグマが解除されました。',
+          text: [
+            '<table>',
+            `<tr><th>偽装</th><td>${enigma?.name}</td></tr>`,
+            `<tr><th>戦力</th><td>${enigma?.power}</td></tr>`,
+            `<tr><th>解除方法</th><td>${enigma?._disarmMethod || 'なし'}</td></tr>`,
+            `<tr><th>指定特技</th><td>${enigma?._targetSkill || 'なし'}</td></tr>`,
+            `<tr><th>脅威度</th><td>${enigma?.menace}</td></tr>`,
+            `<tr><th>バインド</th><td>${bindTargetName}</td></tr>`,
+            `<tr><th>効果</th><td>${enigma?._effect}</td></tr>`,
+            '</table>'
+          ].join(''),
+          imageUrl: url || null
+        }
+      )
+    }
+
     return {
-      uploadImages,
-      onUpdateEnigmaImage,
       enigmaListWrap,
+      pcListWrap,
       isGm,
       removeFilter,
       characterList: computed(() => characterState.characterList),
@@ -282,7 +335,9 @@ export default defineComponent({
       viewMode,
       onAdd,
       onDelete,
-      onDrag
+      onDrag,
+      onChangeOpen,
+      onDisarm
     }
   }
 })
@@ -343,10 +398,6 @@ table {
     min-height: 7em;
     font-size: inherit;
     resize: vertical;
-  }
-
-  .enigma-image :first-child {
-    flex: 1;
   }
 
   @mixin set-column-width($class, $width) {

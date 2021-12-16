@@ -3,7 +3,7 @@ import { ComputedRef } from '@vue/reactivity'
 import { clone, compare, ExcludePropType, removeFilter } from '@/core/utility/typescript'
 import { StoreData } from '@/core/utility/FileUtility'
 import IgnoreWatchUpdateKeyStore from '@/core/data/ignore-watch-update-key'
-import SocketStore, { AddDirectRequest, Store as SocketStoreType } from '@/core/data/socket'
+import SocketStore, { AddDirectRequest, DeleteDataRequest, Store as SocketStoreType } from '@/core/data/socket'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ComputedObject<T> = { [K in keyof T]: T[K] extends (...args: any[]) => any ? T[K] : ComputedRef<T[K]> }
@@ -82,6 +82,7 @@ export type UpdateDataRequest<T> = {
 
 type CommonStoreDataIf<T> = {
   insertData: (...c: (Partial<StoreData<T>> & { data: T })[]) => Promise<string[]>;
+  deleteData: (keys: string[]) => Promise<void>;
   requestData: () => Promise<void>;
 }
 
@@ -138,6 +139,22 @@ export function commonStoreDataProcess<T, U extends keyof T>(
     dataList.splice(index, 1, payload)
   })
 
+  socketStore.socketOn<{ key: string, type: string }>('notify-delete-data', (err, payload) => {
+    if (err) {
+      console.error(err)
+      return
+    }
+    if (payload.type !== collectionName) return
+    if (!ready.value) {
+      console.warn('!!WARNING!!WARNING!!WARNING!!WARNING!!WARNING!!')
+      console.warn('notify-delete-dataを読み飛ばした！！！！！！')
+    }
+    const index = dataList.findIndex(r => r.key === payload.key)
+    if (index < 0) return
+    setIgnoreWatchKey(payload.key)
+    dataList.splice(index, 1)
+  })
+
   socketStore.socketOn<StoreData<T>>('notify-insert-data', (err, payload) => {
     if (err) {
       console.error(err)
@@ -183,6 +200,15 @@ export function commonStoreDataProcess<T, U extends keyof T>(
           share: 'room',
           force: true,
           list
+        }
+      ),
+    deleteData: async (keys: string[]): Promise<void> =>
+      socketStore.sendSocketServerRoundTripRequest<DeleteDataRequest, void>(
+        'db-api-delete',
+        {
+          collectionSuffix: collectionName,
+          share: 'room',
+          list: keys
         }
       )
   }

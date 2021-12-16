@@ -41,7 +41,7 @@
         </tr>
         </thead>
       </template>
-      <template #footer v-if="mode === 'normal' && (isGm || isOwn)">
+      <template #footer v-if="mode === 'normal' && (isGm || isOwn) && sheetInfoWrap.url">
         <tfoot>
         <tr>
           <td colspan="4">
@@ -61,7 +61,7 @@
             <ruby v-if="isRawViewMode" v-html="getNameHtml(element.ninjaArts.name)"></ruby>
             <input type="text" @focus="onFocusColumn($event)" :id="`name-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.name">
           </td>
-          <td class="type" v-if="mode !== 'normal'" v-show="viewMode !== 'alt'" :class="{ focused: currentColumn === 'type' }">
+          <td class="type" v-if="mode === 'update'" v-show="viewMode !== 'alt'" :class="{ focused: currentColumn === 'type' }">
             <template v-if="isRawViewMode">{{ element.ninjaArts.type }}</template>
             <select @focus="onFocusColumn($event)" :id="`type-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.type">
               <option value="攻撃">攻撃</option>
@@ -86,19 +86,19 @@
             <template v-if="isRawViewMode">{{ element.ninjaArts.cost }}</template>
             <input type="text" @focus="onFocusColumn($event)" :id="`cost-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.cost">
           </td>
-          <td class="effect" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'effect' }" v-show="viewMode === 'normal'">
+          <td class="effect" v-if="mode === 'update'" :class="{ focused: currentColumn === 'effect' }" v-show="viewMode === 'normal'">
             <template v-if="isRawViewMode">{{ element.ninjaArts.effect }}</template>
             <textarea @focus="onFocusColumn($event)" :id="`effect-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.effect"></textarea>
           </td>
-          <td class="page" v-if="mode !== 'normal'" :class="{ focused: currentColumn === 'page' }" v-show="viewMode === 'normal'">
+          <td class="page" v-if="mode === 'update'" :class="{ focused: currentColumn === 'page' }" v-show="viewMode === 'normal'">
             <template v-if="isRawViewMode">{{ element.ninjaArts.page }}</template>
             <input type="text" @focus="onFocusColumn($event)" :id="`page-${element.idx}-${elmId}`" v-else v-model="element.ninjaArts.page">
           </td>
           <td v-if="viewMode === 'alt'" class="draggable-handle"></td>
           <td v-if="viewMode === 'alt'" class="delete-btn"><button @click="onDelete(element.idx)">削除</button></td>
         </tr>
-        <tr @click="onSelectArts(element.idx)">
-          <td class="effect-normal" colspan="4" v-show="mode === 'normal' && element.idx === selectedArts">{{ element.ninjaArts.effect }}</td>
+        <tr @click="onSelectArts(element.idx)" v-show="mode === 'normal' && element.idx === selectedArts">
+          <td class="effect-normal" colspan="4">{{ element.ninjaArts.effect }}</td>
         </tr>
         </tbody>
       </template>
@@ -131,7 +131,7 @@ export default defineComponent({
       default: null
     },
     mode: {
-      type: String as PropType<'normal' | 'view' | 'update' | 'insert'>,
+      type: String as PropType<'normal' | 'update'>,
       require: true
     },
     selectIndex: {
@@ -268,7 +268,8 @@ export default defineComponent({
       ninjaArtsListWrap,
       viewMode,
       onDelete,
-      onDrag
+      onDrag,
+      sheetInfoWrap
     }
   }
 })

@@ -16,7 +16,7 @@ blockList:
   layout: h-box
   flexWrap: false
   minHeight:
-    px: 48
+    px: 52
 - key: section-not-top
   layout: h-box
   flexWrap: false
@@ -50,28 +50,35 @@ blockList:
         alignItems: flex-start
         alignContent: flex-start
         blockList:
-        - key: simple-center
-          slotName: simple-center
-          layout: v-box
-          overflowX: hidden
-          flexWrap: false
-        - key: section-scene
-          layout: v-box
-          flex: 1
-          flexWrap: false
-          overflowX: auto
-          blockList:
-          - key: dramatic-scene
-            slotName: dramatic-scene
+          - key: section-core-contents
             layout: h-box
-            flexWrap: false
-            minHeight:
-              em: 3
-          - key: velocity-system
-            slotName: velocity-system
-            layout: h-box
+            flexWrap: true
             flex: 1
-            flexWrap: false
+            alignItems: flex-start
+            alignContent: flex-start
+            blockList:
+            - key: simple-center
+              slotName: simple-center
+              layout: v-box
+              overflowX: hidden
+              flexWrap: false
+            - key: section-scene
+              layout: v-box
+              flex: 1
+              flexWrap: false
+              overflowX: auto
+              blockList:
+              - key: dramatic-scene
+                slotName: dramatic-scene
+                layout: h-box
+                flexWrap: false
+                minHeight:
+                  em: 3
+              - key: velocity-system
+                slotName: velocity-system
+                layout: h-box
+                flex: 1
+                flexWrap: false
     - key: bottom-box
       slotName: bottom-box
       layout: h-box

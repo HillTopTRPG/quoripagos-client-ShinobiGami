@@ -2,7 +2,7 @@ import { reactive, ref } from 'vue'
 import { makeStore, StoreUpdateProperties } from '@/core/utility/vue3'
 import { loadYaml, StoreData } from '@/core/utility/FileUtility'
 import { io, Socket } from 'socket.io-client'
-import { errorDialog } from '@/core/utility/dialog'
+import { cutInDialog, errorDialog } from '@/core/utility/dialog'
 
 type ConnectInfo = {
   quoripagosServer: string;
@@ -24,6 +24,12 @@ export type AddDirectRequest<T> = {
   share: 'room' | 'room-mate';
   list: (Partial<StoreData<T>> & { data: T })[];
   force: boolean;
+};
+
+export type DeleteDataRequest = {
+  collectionSuffix: string;
+  share: 'room' | 'room-mate';
+  list: string[];
 };
 
 export type Store = {
@@ -97,7 +103,18 @@ export default makeStore<Store>('socketStore', () => {
     )
 
     try {
-      socket.value = await connect(connectInfo.quoripagosServer)
+      const _socket = await connect(connectInfo.quoripagosServer)
+      socket.value = _socket
+
+      // イベント受信
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _socket.on('view-cut-in', (_: any, payload: { title: string, text: string, imageUrl: string | null, targetList?: string[] }) => {
+        if (payload.targetList && payload) {
+
+        }
+        cutInDialog({ title: payload.title, text: payload.text }, payload.imageUrl)
+      })
+
       state.status = 'ready'
     } catch (err) {
       await errorDialog({

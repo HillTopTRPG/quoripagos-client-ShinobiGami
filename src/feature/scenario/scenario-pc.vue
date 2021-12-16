@@ -4,8 +4,8 @@
     :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
-    :alt-label="isGm ? '入替/削除' : '簡易'"
-    :editable="mode === 'scenario'"
+    :alt-label="'入替/削除'"
+    :editable="isGm && mode === 'scenario'"
     v-model:viewMode="viewMode"
     :use-add="isGm && mode === 'scenario'"
     @add="onAdd()"
@@ -63,6 +63,12 @@
                 </template>
               </td>
             </tr>
+            <template v-for="e in enigmaListWrap" :key="e.raw.name">
+              <tr v-show="viewMode === 'normal'" v-if="e.raw._targetId === element.raw._characterKey">
+                <th>エニグマ<br/>バインド効果</th>
+                <td class="secret" colspan="3">{{ e.raw._effect }}</td>
+              </tr>
+            </template>
             <tr v-show="viewMode !== 'alt'">
               <th><label :for="isGm ? `pc-${element.idx}-user` : ''">割り当て<br/>ユーザー</label></th>
               <td class="owner" colspan="3">
@@ -78,14 +84,28 @@
               </td>
             </tr>
             <tr v-show="viewMode === 'normal'">
-              <th>この秘密の保持者</th>
+              <th>この秘密の<br />保持者</th>
               <td class="secret-owner" colspan="3">
                 <scenario-jurisdiction-check
                   :types="['pc', 'npc', 'right-hand']"
                   :mode="mode"
                   type="pc"
                   :character-key="element.raw._characterKey"
-                  :jurisdiction-list="element.raw._openList"
+                  :jurisdiction-list="element.raw._secretOpenList"
+                  @push="(type, cKey) => onPush('secret', type, cKey, element.raw._characterKey)"
+                />
+              </td>
+            </tr>
+            <tr v-show="viewMode === 'normal'">
+              <th>この居所の<br />保持者</th>
+              <td class="secret-owner" colspan="3">
+                <scenario-jurisdiction-check
+                  :types="['pc', 'npc', 'right-hand']"
+                  :mode="mode"
+                  type="pc"
+                  :character-key="element.raw._characterKey"
+                  :jurisdiction-list="element.raw._placementOpenList"
+                  @push="(type, cKey) => onPush('placement', type, cKey, element.raw._characterKey)"
                 />
               </td>
             </tr>
@@ -104,18 +124,18 @@
     </tr>
     <template v-for="d in pcListWrap" :key="d.raw._characterKey">
       <tr v-if="d.raw._characterKey !== target">
-        <td>PC {{ d.raw.name }} {{ d.character.sheetInfo.characterName }}</td>
-        <td></td>
-        <td></td>
-        <td>{{ d.raw._openList.some(od => od === target) ? isGm || isOwn ? d.raw.secret || '[秘密なし]' : '⭕️' : '' }}</td>
+        <td class="name">PC {{ d.raw.name }} {{ d.character.sheetInfo.characterName }}</td>
+        <td class="where">{{ d.raw._placementOpenList.some(od => od === target) ? '⭕️' : '' }}</td>
+        <td class="mystery-skill"></td>
+        <td class="secret">{{ d.raw._secretOpenList.some(od => od === target) ? isGm || isOwn ? d.raw.secret || '[秘密なし]' : '⭕️' : '' }}</td>
       </tr>
     </template>
     <template v-for="d in npcListWrap" :key="d.raw._characterKey">
       <tr v-if="d.raw._characterKey !== target">
         <td>NPC {{ d.raw.name }}</td>
+        <td>{{ d.raw._placementOpenList.some(od => od === target) ? '⭕️' : '' }}</td>
         <td></td>
-        <td></td>
-        <td>{{ d.raw._openList.some(od => od === target) ? isGm || isOwn ? d.raw.secret || '[秘密なし]' : '⭕️' : '' }}</td>
+        <td>{{ d.raw._secretOpenList.some(od => od === target) ? isGm || isOwn ? d.raw.secret || '[秘密なし]' : '⭕️' : '' }}</td>
       </tr>
     </template>
     <template v-for="d in rightHandListWrap" :key="d.raw._characterKey">
@@ -132,12 +152,14 @@
 <script lang="ts">
 import { computed, defineComponent, PropType, ref, watch } from 'vue'
 import UserStore from '../../core/data/user'
+import SocketStore from '../../core/data/socket'
 import CharacterStore from '../character/data'
 import { removeFilter } from '@/core/utility/typescript'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import draggable from 'vuedraggable'
 import { questionDialog } from '@/core/utility/dialog'
 import ScenarioStore from '@/feature/scenario/data'
+import MediaListStore from '@/feature/media-list/data'
 import ScenarioJurisdictionCheck from '@/feature/scenario/scenario-jurisdiction-check.vue'
 
 export default defineComponent({
@@ -158,6 +180,8 @@ export default defineComponent({
     const pcList = scenarioState.currentScenario.sheetInfo.pc
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
+    const mediaListState = MediaListStore.injector()
+    const socketStore = SocketStore.injector()
 
     const characterState = CharacterStore.injector()
 
@@ -171,7 +195,8 @@ export default defineComponent({
         name: '',
         recommend: '',
         secret: '',
-        _openList: [],
+        _secretOpenList: [],
+        _placementOpenList: [],
         _userKey: '',
         _characterKey: await characterState.insertEmptyCharacter(),
         plot: -2,
@@ -211,7 +236,8 @@ export default defineComponent({
     const {
       pcListWrap,
       npcListWrap,
-      rightHandListWrap
+      rightHandListWrap,
+      enigmaListWrap
     } = scenarioState.makeWrapLists()
 
     const isOwn = ref(false)
@@ -231,6 +257,90 @@ export default defineComponent({
       }
     }, { immediate: true, deep: true })
 
+    const onPush = async (
+      pushType: 'secret' | 'placement' | 'sheet-open',
+      type: 'pc' | 'npc' | 'right-hand',
+      characterKey: string,
+      thisCharacterKey: string
+    ) => {
+      const thisPc = scenarioState.currentScenario.sheetInfo.pc.find(p => p._characterKey === thisCharacterKey)
+      const pc = scenarioState.currentScenario.sheetInfo.pc.find(p => p._characterKey === characterKey)
+      const npc = scenarioState.currentScenario.sheetInfo.npc.find(p => p._characterKey === characterKey)
+      const rightHand = scenarioState.currentScenario.sheetInfo.righthand.find(p => p._characterKey === characterKey)
+      const name = pc ? `PC ${pc.name}` : npc ? `NPC ${npc.name}` : rightHand ? `腹心 ${rightHand.name}` : ''
+
+      let questionTitle: string
+      let questionText: string
+      let cutInTitle: string
+      let cutInTextParties: string
+      let cutInTextOpposite: string
+
+      switch (pushType) {
+        case 'secret':
+          questionTitle = '秘密獲得通知確認'
+          cutInTitle = '秘密獲得'
+          questionText = `${name} が PC ${thisPc?.name} の秘密を獲得したことを全員に通知します。`
+          cutInTextParties = `${name} が PC ${thisPc?.name}の秘密を獲得しました。\n\n${thisPc?.secret || 'なし'}`
+          cutInTextOpposite = `${name} が PC ${thisPc?.name}の秘密を獲得しました。`
+          break
+        case 'placement':
+          questionTitle = '居所獲得通知確認'
+          questionText = `${name} が PC ${thisPc?.name} の居所を獲得したことを全員に通知します。`
+          cutInTitle = '居所獲得'
+          cutInTextParties = `${name} が PC ${thisPc?.name}の居所を獲得しました。`
+          cutInTextOpposite = `${name} が PC ${thisPc?.name}の居所を獲得しました。`
+          break
+        default:
+          questionTitle = 'キャラシ閲覧許可通知確認'
+          questionText = `${name} が PC ${thisPc?.name} のキャラシを閲覧できるようになったことを全員に通知します。`
+          cutInTitle = 'キャラシ閲覧許可'
+          cutInTextParties = `${name} が PC ${thisPc?.name}のキャラシを閲覧できるようになりました。`
+          cutInTextOpposite = `${name} が PC ${thisPc?.name}のキャラシを閲覧できるようになりました。`
+          break
+      }
+
+      if (!await questionDialog({
+        title: questionTitle,
+        text: questionText,
+        confirmButtonText: '表示する',
+        cancelButtonText: '表示しない'
+      })) return
+
+      const media = mediaListState.list.find(m => m.key === thisPc?.chitImageList[thisPc?.currentChitImage])
+      const url = media?.data?.url
+
+      const sendCutIn = async (targetList: string[], text: string) =>
+        socketStore.sendSocketClientRequest<{ title: string, text: string, imageUrl: string | null, targetList?: string[] }>(
+          'view-cut-in',
+          targetList,
+          {
+            title: cutInTitle,
+            text,
+            imageUrl: url || null
+          }
+        )
+
+      const gmSocketIdList = userState.userList
+        .filter(u => u.type === 'gm')
+        .flatMap(u => u.socketIdList)
+
+      const thisPcSocketIdList = userState.userList
+        .filter(u => u.key === thisPc?._userKey)
+        .flatMap(u => u.socketIdList)
+
+      const pcSocketIdList = userState.userList
+        .filter(u => u.key === pc?._userKey)
+        .flatMap(u => u.socketIdList)
+
+      await sendCutIn([...gmSocketIdList, ...thisPcSocketIdList, ...pcSocketIdList], cutInTextParties)
+
+      const otherSocketIdList = userState.userList
+        .filter(u => u.key !== pc?._userKey && u.key !== thisPc?._userKey && u.type !== 'gm')
+        .flatMap(u => u.socketIdList)
+
+      await sendCutIn(otherSocketIdList, cutInTextOpposite)
+    }
+
     return {
       isOwn,
       userList: computed(() => userState.userList),
@@ -238,6 +348,7 @@ export default defineComponent({
       pcListWrap,
       npcListWrap,
       rightHandListWrap,
+      enigmaListWrap,
       isGm,
       removeFilter,
       characterList: computed(() => characterState.characterList),
@@ -245,7 +356,8 @@ export default defineComponent({
       viewMode,
       onAdd,
       onDelete,
-      onDrag
+      onDrag,
+      onPush
     }
   }
 })
@@ -359,6 +471,7 @@ table {
     border: none;
   }
 
+  input:not([type='checkbox']),
   select {
     padding: 0;
     margin: 0;
