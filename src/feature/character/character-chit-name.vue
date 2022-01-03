@@ -7,9 +7,9 @@
   >
     <div class="container">
       <div class="type" v-if="viewName">{{ label }}{{ type === 'pc' ? ` ${scenarioName}` : '' }}</div>
+      <span class="message" v-if="isGm && secretCheck">PL不可視</span>
       <div class="image">{{ oneName }}</div>
       <div class="label" v-if="viewName">{{ characterSheetName }}</div>
-      <span class="message" v-if="isGm && secretCheck">PL不可視</span>
     </div>
   </div>
 </template>
@@ -76,22 +76,22 @@ export default defineComponent({
       if (props.type === 'npc') {
         c = sheetInfo.npc.find(p => p._characterKey === props.target)
         secretCheck.value = c?.secretcheck || false
-        characterSheetName.value = ''
+        characterSheetName.value = c?.name || ''
       }
       if (props.type === 'right-hand') {
         c = sheetInfo.righthand.find(p => p._characterKey === props.target)
         secretCheck.value = c?._secretCheck || false
-        characterSheetName.value = ''
+        characterSheetName.value = c?.name || ''
       }
       if (props.type === 'enigma') {
         c = sheetInfo.enigma.find(p => p.name === props.target)
         secretCheck.value = false
-        characterSheetName.value = ''
+        characterSheetName.value = c?.name || ''
       }
       if (c) {
         scenarioName.value = c.name
 
-        const chitImageUrl = mediaListState.list.find(m => c && m.key === c.chitImageList[c.currentChitImage])?.data?.url
+        const chitImageUrl: string | null | undefined = mediaListState.list.find(m => c && m.key === c.chitImageList[c.currentChitImage])?.data?.url
         styleObj['--color'] = c?.color
         styleObj['--chit-image'] = chitImageUrl ? `url('${chitImageUrl}')` : ''
         oneName.value = scenarioName.value ? scenarioName.value.substr(0, 1) : ''

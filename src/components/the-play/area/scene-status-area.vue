@@ -23,9 +23,15 @@ export default defineComponent({
     const roomSettingState = RoomSettingStore.injector()
     const limit = computed(() => scenarioState.currentScenario.sheetInfo.base.limit)
 
-    const cycle = ref(roomSettingState.roomSetting?.cycle || 0)
-    const round = ref(roomSettingState.roomSetting?.round || 0)
-    const battleField = ref(roomSettingState.roomSetting?.battleField || 0)
+    const cycle = ref(0)
+    const round = ref(0)
+    const battleField = ref(0)
+
+    watch(() => roomSettingState.roomSetting, () => {
+      cycle.value = roomSettingState.roomSetting?.cycle || 0
+      round.value = roomSettingState.roomSetting?.round || 0
+      battleField.value = roomSettingState.roomSetting?.battleField || 0
+    }, { immediate: true, deep: true })
 
     watch([cycle, round, battleField], () => {
       if (roomSettingState.roomSetting) {

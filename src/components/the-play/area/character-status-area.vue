@@ -84,11 +84,9 @@
 import { computed, defineComponent } from 'vue'
 import CharacterStore from '@/feature/character/data'
 import ScenarioStore from '@/feature/scenario/data'
-import MediaListStore from '@/feature/media-list/data'
 import UserStore from '@/core/data/user'
 import PlotSelect from '@/components/the-play/select/plot-select.vue'
 import CharacterChitName from '@/feature/character/character-chit-name.vue'
-import { cutInDialog } from '@/core/utility/dialog'
 
 export default defineComponent({
   name: 'character-status-area',
@@ -97,7 +95,6 @@ export default defineComponent({
     const characterState = CharacterStore.injector()
 
     const scenarioState = ScenarioStore.injector()
-    const mediaListState = MediaListStore.injector()
     const pcList = computed(() => scenarioState.currentScenario.sheetInfo.pc)
     const npcList = computed(() => scenarioState.currentScenario.sheetInfo.npc)
     const rightHandList = computed(() => scenarioState.currentScenario.sheetInfo.righthand)
@@ -108,30 +105,6 @@ export default defineComponent({
     const onSelectChit = (type: string, target: string) => {
       const elmId = `${type}-detail-${target}`
       document.getElementById(elmId)?.scrollIntoView(true)
-      if (type === 'enigma') {
-        const enigma = enigmaList.value.find(e => e.name === target)
-        const media = mediaListState.list.find(m => m.key === enigma?.chitImageList[enigma?.currentChitImage])
-        const bindTarget = pcList.value.find(p => p._characterKey === enigma?._targetId)
-        const bindTargetName = bindTarget ? `PC ${bindTarget.name}` : 'なし'
-        const url = media?.data?.url
-        const isOpened = enigma?._open
-        cutInDialog(
-          {
-            title: `エニグマ：${enigma?.name}`,
-            text: [
-              '<table>',
-              `<tr><th>戦力</th><td>${!isOpened ? '不明' : enigma?.power}</td></tr>`,
-              `<tr><th>解除方法</th><td>${!isOpened ? '不明' : enigma?._disarmMethod || 'なし'}</td></tr>`,
-              `<tr><th>指定特技</th><td>${!isOpened ? '不明' : enigma?._targetSkill || 'なし'}</td></tr>`,
-              `<tr><th>脅威度</th><td>${!isOpened ? '不明' : enigma?.menace}</td></tr>`,
-              `<tr><th>バインド</th><td>${!isOpened ? '不明' : bindTargetName}</td></tr>`,
-              `<tr><th>効果</th><td>${!isOpened ? '不明' : enigma?._effect}</td></tr>`,
-              '</table>'
-            ].join('')
-          },
-          url || null
-        )
-      }
     }
 
     return {

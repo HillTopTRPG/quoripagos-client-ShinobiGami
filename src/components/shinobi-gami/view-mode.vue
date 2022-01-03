@@ -1,6 +1,6 @@
 <template>
   <h2 :class="viewMode">
-    <span>{{ title }}</span>
+    <span class="title" v-if="title">{{ title }}</span>
     <span class="view-mode">
       <label>
         <input type="radio" :name="`view-mode-${elmId}`" value="normal" :checked="'normal' === viewMode" @change="$emit('update:viewMode', $event.target.value)">
@@ -73,36 +73,10 @@ export default defineComponent({
 
 h2 {
   @include common.flex-box(row, flex-start, center);
-  position:relative;
-  padding-left: 10px;
   margin: 0;
   box-sizing: border-box;
   width: 100%;
   font-size: calc(var(--sheet-font-size) * 1.2);
-
-  &:before{
-    content: '';
-    position: absolute;
-    top: -6px;
-    left: 3px;
-    height: 15px;
-    width: 3px;
-    display: block;
-    background: #252525;
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3) inset;
-  }
-
-  &:after {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: 0;
-    height: 3px;
-    width: 13px;
-    display: block;
-    background: #252525;
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3) inset;
-  }
 
   > :first-child {
     flex: 1;
@@ -118,13 +92,44 @@ button {
   font-size: var(--sheet-font-size);
 }
 
+.title {
+  position:relative;
+  margin-left: 10px;
+
+  &:before{
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: -5px;
+    height: 15px;
+    width: 3px;
+    display: block;
+    background: #252525;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3) inset;
+  }
+
+  &:after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -10px;
+    height: 3px;
+    width: 13px;
+    display: block;
+    background: #252525;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3) inset;
+  }
+}
+
 .view-mode {
   @include common.flex-box(row, flex-start, center);
   font-size: var(--sheet-font-size);
-  background-color: white;
   padding: 0.1rem;
   font-weight: normal;
 
+  label {
+    background-color: rgba(255, 255, 255, 0.7);
+  }
   input {
     display: none;
   }

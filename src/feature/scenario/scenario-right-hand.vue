@@ -1,6 +1,6 @@
 <template>
   <view-mode
-    title="腹心"
+    :title="mode === 'detail' ? '' : '腹心'"
     :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
@@ -61,7 +61,7 @@
                   type="right-hand"
                   :character-key="element.raw._characterKey"
                   :jurisdiction-list="element.raw._sheetOpenList"
-                  @push="(type, cKey) => onPush('sheet-open', type, cKey)"
+                  @push="(type, cKey) => onJurisdictionChecked('sheet-open', type, cKey)"
                 />
               </td>
             </tr>
@@ -88,7 +88,7 @@ export default defineComponent({
   components: { ScenarioJurisdictionCheck, ViewMode, draggable },
   props: {
     mode: {
-      type: String as PropType<'scenario' | 'character'>,
+      type: String as PropType<'scenario' | 'character' | 'detail'>,
       required: true
     },
     target: {
@@ -172,7 +172,7 @@ export default defineComponent({
   gap: 0.5em;
 }
 
-h2:deep() {
+@include common.deep("h2") {
   width: calc(var(--sheet-font-size) * 45);
 }
 

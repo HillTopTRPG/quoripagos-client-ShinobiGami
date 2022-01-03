@@ -1,6 +1,6 @@
 <template>
   <view-mode
-    title="PC"
+    :title="mode === 'detail' ? '' : 'PC'"
     :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
@@ -8,6 +8,7 @@
     :editable="isGm && mode === 'scenario'"
     v-model:viewMode="viewMode"
     :use-add="isGm && mode === 'scenario'"
+    :class="mode"
     @add="onAdd()"
   />
   <draggable
@@ -26,7 +27,7 @@
         <div class="grip-line" v-show="isGm && viewMode === 'alt'">
           <button @click="onDelete(element.idx)">削除</button>
         </div>
-        <table class="pc">
+        <table class="pc" :class="mode">
           <tbody>
             <tr>
               <th><label :for="isGm && mode === 'scenario' ? `pc-${element.idx}-name` : ''">PC</label></th>
@@ -38,6 +39,20 @@
               <td class="recommend">
                 <input type="text" :id="`pc-${element.idx}-recommend`" v-if="isGm && mode === 'scenario'" v-model="element.raw.recommend">
                 <template v-else>{{ element.raw.recommend }}</template>
+              </td>
+            </tr>
+            <tr v-show="viewMode !== 'alt'">
+              <th><label :for="isGm ? `pc-${element.idx}-user` : ''">割り当て<br/>ユーザー</label></th>
+              <td class="owner" colspan="3">
+                <select v-if="isGm" :id="`pc-${element.idx}-user`" v-model="element.raw._userKey">
+                  <option value="">選択なし</option>
+                  <template v-for="u in userList" :key="u.key">
+                    <option v-if="u.type === 'pl'" :value="u.key">{{ u.name }}</option>
+                  </template>
+                </select>
+                <template v-else>{{
+                    userList.find(u => u.key === element.raw._userKey)?.name || '選択なし'
+                  }}</template>
               </td>
             </tr>
             <tr v-show="viewMode === 'normal'">
@@ -60,6 +75,7 @@
                 <textarea :id="`pc-${element.idx}-secret`" v-if="isGm && mode === 'scenario'" v-model="element.raw.secret"></textarea>
                 <template v-else>
                   <template v-if="isGm || getChitStatus('pc', element.raw._characterKey).isSecretOpen">{{ element.raw.secret }}</template>
+                  <template v-else>[あなたはこの秘密を知らない]</template>
                 </template>
               </td>
             </tr>
@@ -69,22 +85,8 @@
                 <td class="secret" colspan="3">{{ e.raw._effect }}</td>
               </tr>
             </template>
-            <tr v-show="viewMode !== 'alt'">
-              <th><label :for="isGm ? `pc-${element.idx}-user` : ''">割り当て<br/>ユーザー</label></th>
-              <td class="owner" colspan="3">
-                <select v-if="isGm" :id="`pc-${element.idx}-user`" v-model="element.raw._userKey">
-                  <option value="">選択なし</option>
-                  <template v-for="u in userList" :key="u.key">
-                    <option v-if="u.type === 'pl'" :value="u.key">{{ u.name }}</option>
-                  </template>
-                </select>
-                <template v-else>{{
-                  userList.find(u => u.key === element.raw._userKey)?.name || '選択なし'
-                }}</template>
-              </td>
-            </tr>
             <tr v-show="viewMode === 'normal'">
-              <th>この秘密の<br />保持者</th>
+              <th>この秘密の<br />保持者<br >(GMのみ変更可)</th>
               <td class="secret-owner" colspan="3">
                 <scenario-jurisdiction-check
                   :types="['pc', 'npc', 'right-hand']"
@@ -92,12 +94,12 @@
                   type="pc"
                   :character-key="element.raw._characterKey"
                   :jurisdiction-list="element.raw._secretOpenList"
-                  @push="(type, cKey) => onPush('secret', type, cKey, element.raw._characterKey)"
+                  @push="(type, cKey) => onJurisdictionChecked('secret', type, cKey, element.raw._characterKey)"
                 />
               </td>
             </tr>
             <tr v-show="viewMode === 'normal'">
-              <th>この居所の<br />保持者</th>
+              <th>この居所の<br />保持者<br />(GMのみ変更可)</th>
               <td class="secret-owner" colspan="3">
                 <scenario-jurisdiction-check
                   :types="['pc', 'npc', 'right-hand']"
@@ -105,7 +107,7 @@
                   type="pc"
                   :character-key="element.raw._characterKey"
                   :jurisdiction-list="element.raw._placementOpenList"
-                  @push="(type, cKey) => onPush('placement', type, cKey, element.raw._characterKey)"
+                  @push="(type, cKey) => onJurisdictionChecked('placement', type, cKey, element.raw._characterKey)"
                 />
               </td>
             </tr>
@@ -126,7 +128,12 @@
       <tr v-if="d.raw._characterKey !== target">
         <td class="name">PC {{ d.raw.name }} {{ d.character.sheetInfo.characterName }}</td>
         <td class="where">{{ d.raw._placementOpenList.some(od => od === target) ? '⭕️' : '' }}</td>
-        <td class="mystery-skill"></td>
+        <td class="mystery-skill">
+          <button
+            v-if="d.character.sheetInfo.specialArtsList.some(sa => sa._openList.some(od => od === target))"
+            @click="viewCutInMysterySkill('pc', d.raw._characterKey)"
+          >{{ d.character.sheetInfo.specialArtsList.filter(sa => sa._openList.some(od => od === target)).length }}個</button>
+        </td>
         <td class="secret">{{ d.raw._secretOpenList.some(od => od === target) ? isGm || isOwn ? d.raw.secret || '[秘密なし]' : '⭕️' : '' }}</td>
       </tr>
     </template>
@@ -157,7 +164,7 @@ import CharacterStore from '../character/data'
 import { removeFilter } from '@/core/utility/typescript'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import draggable from 'vuedraggable'
-import { questionDialog } from '@/core/utility/dialog'
+import { cutInDialog, questionDialog } from '@/core/utility/dialog'
 import ScenarioStore from '@/feature/scenario/data'
 import MediaListStore from '@/feature/media-list/data'
 import ScenarioJurisdictionCheck from '@/feature/scenario/scenario-jurisdiction-check.vue'
@@ -167,7 +174,7 @@ export default defineComponent({
   components: { ScenarioJurisdictionCheck, ViewMode, draggable },
   props: {
     mode: {
-      type: String as PropType<'scenario' | 'character'>,
+      type: String as PropType<'scenario' | 'character' | 'detail'>,
       required: true
     },
     target: {
@@ -257,7 +264,47 @@ export default defineComponent({
       }
     }, { immediate: true, deep: true })
 
-    const onPush = async (
+    const viewCutInMysterySkill = async (
+      type: 'pc' | 'npc' | 'right-hand',
+      characterKey: string
+    ) => {
+      const thisPc = scenarioState.currentScenario.sheetInfo.pc.find(p => p._characterKey === props.target)
+      const pc = scenarioState.currentScenario.sheetInfo.pc.find(p => p._characterKey === characterKey)
+      const npc = scenarioState.currentScenario.sheetInfo.npc.find(p => p._characterKey === characterKey)
+      const rightHand = scenarioState.currentScenario.sheetInfo.righthand.find(p => p._characterKey === characterKey)
+      const name = pc ? `PC ${pc.name}` : npc ? `NPC ${npc.name}` : rightHand ? `腹心 ${rightHand.name}` : ''
+      const character = characterState.characterList.find(c => c.key === characterKey)
+
+      const specialArts = character?.data?.sheetInfo.specialArtsList
+        .filter(sa => sa._openList.some(od => od === props.target))
+        .map(specialArts => {
+          const secretText =
+            userState.selfUser?.type === 'gm' ||
+            pc?._userKey === userState.selfUser?.key ||
+            specialArts._openList
+              .map(od => scenarioState.currentScenario.sheetInfo.pc.find(p => p._characterKey === od)?._userKey)
+              .some(userKey => userKey === userState.selfUser?.key) ? '' : 'あなたは閲覧できません'
+          return [
+            '<table>',
+            `<tr><th>名称</th><td>${secretText || specialArts.name}</td></tr>`,
+            `<tr><th>指定特技</th><td>${secretText || specialArts.skill}</td></tr>`,
+            `<tr><th>効果／強み／弱み</th><td>${secretText || specialArts.effect || 'なし'}</td></tr>`,
+            `<tr><th>演出</th><td>${secretText || specialArts.direction || 'なし'}</td></tr>`,
+            '</table>'
+          ].join('')
+        })
+        .join('') || ''
+
+      const cutInTitle = `${name}の奥義`
+      const cutInText = `PC ${thisPc?.name}が知っている奥義\n\n${specialArts}`
+
+      return cutInDialog({
+        title: cutInTitle,
+        text: cutInText
+      })
+    }
+
+    const onJurisdictionChecked = async (
       pushType: 'secret' | 'placement' | 'sheet-open',
       type: 'pc' | 'npc' | 'right-hand',
       characterKey: string,
@@ -357,7 +404,8 @@ export default defineComponent({
       onAdd,
       onDelete,
       onDrag,
-      onPush
+      onJurisdictionChecked,
+      viewCutInMysterySkill
     }
   }
 })
@@ -371,8 +419,11 @@ export default defineComponent({
   gap: 0.5em;
 }
 
-h2:deep() {
-  width: calc(var(--sheet-font-size) * 45);
+h2:not(.detail) {
+  @include common.deep() {
+    width: calc(var(--sheet-font-size) * 45);
+    margin-bottom: 0 !important;
+  }
 }
 
 .h-box {
@@ -408,8 +459,12 @@ h2:deep() {
   }
   .where,
   .mystery-skill {
-    width: 3em;
+    width: 4em;
     text-align: center;
+
+    button {
+      width: 100%;
+    }
   }
 }
 
@@ -418,11 +473,15 @@ table {
   border-spacing: 0;
   table-layout: fixed;
   font-size: var(--sheet-font-size);
-  width: 45em;
-  max-width: 45em;
-  min-width: 45em;
   box-sizing: border-box;
   height: 100%;
+  background-color: rgba(255, 255, 255, 0.7);
+
+  &:not(.detail):not(.has-info-table) {
+    width: 45em;
+    max-width: 45em;
+    min-width: 45em;
+  }
 
   textarea {
     box-sizing: border-box;

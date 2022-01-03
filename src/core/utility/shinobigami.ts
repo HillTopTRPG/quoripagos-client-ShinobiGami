@@ -19,6 +19,7 @@ export type SpecialArts = {
   skill: string;
   effect: string;
   direction: string;
+  _openList: string[];
 }
 
 export type NinjaTool = {
@@ -198,7 +199,8 @@ export class ShinobigamiHelper {
         name: textFilter(s.name),
         skill: textFilter(s.skill),
         effect: textFilter(s.effect),
-        direction: textFilter(s.explain)
+        direction: textFilter(s.explain),
+        _openList: []
       })),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ninjaToolList: jsons[1].item.map((t: any) => ({

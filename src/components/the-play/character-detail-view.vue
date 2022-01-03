@@ -4,53 +4,75 @@
         class="character-detail-view"
         :id="elmId"
         :style="{ '--color': scenarioData?.color }"
-        v-if="sheetInfoWrap"
+        v-if="type === 'enigma' || sheetInfoWrap"
       >
         <div class="header">
           <div class="main">
             <h2>
-              <ruby>
+              <ruby v-if="type === 'pc'">
                 {{ sheetInfoWrap?.characterName }}
                 <rp>（</rp>
                 <rt>{{ sheetInfoWrap?.characterNameKana }}</rt>
                 <rp>）</rp>
               </ruby>
+              <template v-else>{{ scenarioData.name }}</template>
             </h2>
-            <div class="player">{{ sheetInfoWrap?.playerName }}</div>
+            <div class="player">{{ ownerName }}</div>
           </div>
-          <div class="other">
+          <div class="other" v-if="type === 'pc' || scenarioData._hasSheet">
             <div class="style">{{ sheetInfoWrap?.upperStyle }} - {{ sheetInfoWrap?.subStyle || '上位流派' }} - {{ sheetInfoWrap?.level }}</div>
             <div class="style-rule">{{ sheetInfoWrap?.stylerule }}</div>
             <div class="personal">{{ sheetInfoWrap?.belief }} - {{ sheetInfoWrap?.cover }} - {{ sheetInfoWrap?.age }} - {{ sheetInfoWrap?.sex }}</div>
           </div>
         </div>
 
-        <div class="part-wrap">
-          <scenario-pc :target="target" mode="character" />
+        <div class="part-wrap first">
+          <scenario-pc v-if="type === 'pc'" :target="target" mode="detail" />
+          <scenario-npc v-if="type === 'npc'" :target="target" mode="detail" />
+          <scenario-right-hand v-if="type === 'right-hand'" :target="target" mode="detail" />
+          <scenario-enigma v-if="type === 'enigma'" :target="target" mode="detail" />
         </div>
 
-        <div class="backgrounds">
-          <div class="background" v-for="(bg, idx) in sheetInfoWrap?.backgroundList" :key="idx">{{ bg.name }}</div>
-        </div>
+        <template v-if="type === 'pc' || scenarioData._hasSheet">
 
-        <div class="part-wrap">
-          <skill-table-set
-            :type="type"
-            :target="target"
-            @clearArts="onClearArts()"
-            :target-arts="selectedNinjaArtsIndex !== null ? sheetInfoWrap?.ninjaArtsList[selectedNinjaArtsIndex]?.name || null : null"
-            v-model:other-character-key="otherCharacterKey"
-            v-model:target-skill="targetSkill"
-          />
-        </div>
-        <div class="part-wrap">
-          <ninja-arts-table
-            :type="type"
-            :target="target"
-            mode="normal"
-            v-model:select-index="selectedNinjaArtsIndex"
-          />
-        </div>
+          <div class="backgrounds">
+            <div class="background" v-for="(bg, idx) in sheetInfoWrap?.backgroundList" :key="idx">{{ bg.name }}</div>
+          </div>
+
+          <div class="part-wrap">
+            <skill-table-set
+              :id="`${elmId}-skill`"
+              :type="type"
+              :target="target"
+              @clearArts="onClearArts()"
+              :target-arts="selectedNinjaArtsIndex !== null ? sheetInfoWrap?.ninjaArtsList[selectedNinjaArtsIndex]?.name || null : null"
+              v-model:other-character-key="otherCharacterKey"
+              v-model:target-skill="targetSkill"
+            />
+          </div>
+          <div class="part-wrap">
+            <ninja-arts-table
+              :type="type"
+              :target="target"
+              mode="normal"
+              v-model:select-index="selectedNinjaArtsIndex"
+            />
+          </div>
+          <div class="part-wrap">
+            <special-arts-table
+              :type="type"
+              :target="target"
+              mode="normal"
+            />
+          </div>
+          <div class="part-wrap">
+            <ninja-tool-table
+              :type="type"
+              :target="target"
+              mode="normal"
+            />
+          </div>
+        </template>
       </div>
     </transition>
 </template>
@@ -58,19 +80,25 @@
 <script lang="ts">
 import { computed, defineComponent, PropType, ref, watch } from 'vue'
 import CharacterStore from '@/feature/character/data'
+import UserStore from '@/core/data/user'
 import SkillTableSet from '@/components/shinobi-gami/skill-table-set.vue'
 import NinjaArtsTable from '@/components/shinobi-gami/ninja-arts-table.vue'
 import { ShinobiGami, SkillTable } from '@/core/utility/shinobigami'
 import { ActorBase } from '@/core/utility/shinobigamiScenario'
 import ScenarioStore from '@/feature/scenario/data'
 import ScenarioPc from '@/feature/scenario/scenario-pc.vue'
+import ScenarioRightHand from '@/feature/scenario/scenario-right-hand.vue'
+import ScenarioNpc from '@/feature/scenario/scenario-npc.vue'
+import SpecialArtsTable from '@/components/shinobi-gami/special-arts-table.vue'
+import NinjaToolTable from '@/components/shinobi-gami/ninja-tool-table.vue'
+import ScenarioEnigma from '@/feature/scenario/scenario-enigma.vue'
 
 export default defineComponent({
   name: 'character-detail-view',
-  components: { ScenarioPc, NinjaArtsTable, SkillTableSet },
+  components: { ScenarioEnigma, NinjaToolTable, SpecialArtsTable, ScenarioNpc, ScenarioRightHand, ScenarioPc, NinjaArtsTable, SkillTableSet },
   props: {
     type: {
-      type: String as PropType<'pc' | 'npc' | 'right-hand'>,
+      type: String as PropType<'pc' | 'npc' | 'right-hand' | 'enigma'>,
       required: true
     },
     target: {
@@ -82,6 +110,9 @@ export default defineComponent({
     const characterState = CharacterStore.injector()
     const scenarioState = ScenarioStore.injector()
     const elmId = computed(() => `${props.type}-detail-${props.target}`)
+    const userState = UserStore.injector()
+
+    const ownerName = ref('')
 
     const scenarioData = ref<ActorBase | null>(null)
     watch([
@@ -89,16 +120,26 @@ export default defineComponent({
       () => props.target,
       () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
       () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
-      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
     ], () => {
       if (props.type === 'pc') {
-        scenarioData.value = scenarioState.currentScenario.sheetInfo.pc.find(d => d._characterKey === props.target) || null
+        const pc = scenarioState.currentScenario.sheetInfo.pc.find(d => d._characterKey === props.target) || null
+        const user = userState.userList.find(u => u.key === pc?._userKey)
+        ownerName.value = `PC ${pc?.name} - ${user?.name || '[担当ユーザーなし]'}`
+        scenarioData.value = pc
       } else if (props.type === 'npc') {
         scenarioData.value = scenarioState.currentScenario.sheetInfo.npc.find(d => d._characterKey === props.target) || null
+        ownerName.value = 'NPC'
       } else if (props.type === 'right-hand') {
         scenarioData.value = scenarioState.currentScenario.sheetInfo.righthand.find(d => d._characterKey === props.target) || null
+        ownerName.value = '腹心'
+      } else if (props.type === 'enigma') {
+        scenarioData.value = scenarioState.currentScenario.sheetInfo.enigma.find(d => d.name === props.target) || null
+        ownerName.value = 'エニグマ'
       } else {
         scenarioData.value = null
+        ownerName.value = ''
       }
     }, { immediate: true, deep: true })
 
@@ -127,6 +168,7 @@ export default defineComponent({
     return {
       elmId,
       scenarioData,
+      ownerName,
       sheetInfoWrap,
       selectedNinjaArtsIndex,
       targetSkill,
@@ -150,14 +192,16 @@ export default defineComponent({
 }
 
 .header {
-  @include common.flex-box(row, flex-start, center, wrap);
+  @include common.flex-box(row, flex-start, center);
+  overflow: hidden;
   gap: 0.5rem;
   width: 100%;
   background-color: var(--color);
   color: white;
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 10000;
+  height: 5rem;
 
   h2 {
     margin: 0;
@@ -191,6 +235,9 @@ export default defineComponent({
     > * {
       text-align: left;
       font-size: 1em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
     }
   }
 }
@@ -201,20 +248,53 @@ export default defineComponent({
   width: 100%;
 
   .background {
-    border: 1px solid gray;
+    box-shadow: rgba(0, 0, 0, 0.05) 0 6px 24px 0, rgba(0, 0, 0, 0.08) 0 0 0 1px;
     border-radius: 5px;
     padding: 0 0.5rem;
     cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.7);
   }
 }
 
-.part-wrap {
+@include common.deep("h2") {
+  margin-bottom: -0.5rem;
+}
+
+.character-detail-view .part-wrap {
+  @include common.flex-box(column, flex-start, flex-start);
   max-width: 100%;
   overflow-x: auto;
+  gap: 0.5rem;
+
+  &:not(.first) {
+    margin-top: -5rem;
+    pointer-events: none;
+
+    :deep(> *) {
+      padding-top: 5rem;
+    }
+    &:deep(> * > *) {
+      pointer-events: all;
+    }
+  }
 }
 
 .character-detail-view {
   @include common.flex-box(row, flex-start, flex-start, wrap);
-  gap: 0.5em;
+  gap: 0.5rem;
+  position: relative;
+  padding-bottom: 0.5rem;
+
+  &:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background-color: var(--color);
+    opacity: 0.1;
+    z-index: -1;
+  }
 }
 </style>

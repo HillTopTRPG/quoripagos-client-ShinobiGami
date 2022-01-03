@@ -18,7 +18,7 @@
     <div class="select-block">
       <select v-model="fromKey">
         <option disabled>使用者</option>
-        <option :value="c.key" v-for="c in characterList" :key="c.key">{{ c.data?.sheetInfo.characterName || '' }}</option>
+        <option :value="c.key" v-for="c in fromList" :key="c.key">{{ c.name || '' }}</option>
       </select>
       <select :value="ninjaArts" @change="setNinjaArts($event.target.value)" v-if="ninjaArtsList.length">
         <option disabled>忍法</option>
@@ -41,13 +41,34 @@
       <select v-model="toKey">
         <option disabled>対象者</option>
         <option :value="null">なし</option>
-        <option :value="c.key" v-for="c in characterList" :key="c.key">{{ c.data?.sheetInfo.characterName || '' }}</option>
+        <option :value="c.key" v-for="c in targetList" :key="c.key">{{ c.name || '' }}</option>
       </select>
     </div>
-    <label class="slider"><span>ダイス数</span><input type="range" min="1" max="4" @click.stop :value="dice" @input="setDice($event.target.valueAsNumber)"><span>{{ dice }}</span></label>
+    <label class="slider"><span>ダイス数</span><input type="range" min="1" max="4" list="range1-4" @click.stop :value="dice" @input="setDice($event.target.valueAsNumber)"><span>{{ dice }}</span></label>
     <label class="slider" v-show="cmdTypeRaw === 'SG'"><span>スペシャル</span><input type="range" min="2" max="12" list="range2-12" @click.stop :value="special" @input="setSpecial($event.target.valueAsNumber)"><span>{{ special }}</span></label>
-    <label class="slider" v-show="cmdTypeRaw === 'SG'"><span>ファンブル</span><input type="range" min="2" max="12" list="range2-12" @click.stop :value="fumble" @input="setFumble($event.target.valueAsNumber)"><span>{{ fumble }}</span></label>
+    <label class="slider" v-show="cmdTypeRaw === 'SG'"><span>ファンブル</span><input type="range" min="0" max="12" list="range0-12" @click.stop :value="fumble" @input="setFumble($event.target.valueAsNumber)"><span>{{ fumble }}</span></label>
     <label class="slider" v-show="cmdTypeRaw !== 'D6'"><span>達成値</span><input type="range" min="2" max="12" list="range2-12" @click.stop :value="targetValue" @input="setTargetValue($event.target.valueAsNumber)"><span>{{ targetValue }}</span></label>
+    <datalist id="range1-4">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </datalist>
+    <datalist id="range0-12">
+      <option value="0">0</option>
+      <option value="1"></option>
+      <option value="2">2</option>
+      <option value="3"></option>
+      <option value="4">4</option>
+      <option value="5"></option>
+      <option value="6">6</option>
+      <option value="7"></option>
+      <option value="8">8</option>
+      <option value="9"></option>
+      <option value="10">10</option>
+      <option value="11"></option>
+      <option value="12">12</option>
+    </datalist>
     <datalist id="range2-12">
       <option value="2">2</option>
       <option value="3"></option>
@@ -65,14 +86,16 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, ref, watch, watchEffect } from 'vue'
+import { defineComponent, ref, watch, watchEffect } from 'vue'
 import SpecialInputStore, { SpecialInputType } from '@/feature/special-input/data'
 import CharacterStore, { Character } from '@/feature/character/data'
+import ScenarioStore from '@/feature/scenario/data'
 import UserStore from '@/core/data/user'
 import { NinjaArts, SkillTable } from '@/core/utility/shinobigami'
 import { makeComputedObject } from '@/core/utility/vue3'
 import { convertNumberZero } from '@/core/utility/PrimaryDataUtility'
 import { calcTargetValue, TargetValueCalcResult } from '@/core/utility/TrpgSystemFasade'
+import { VelocityChitBase } from '@/core/utility/shinobigamiScenario'
 
 export default defineComponent({
   name: 'special-input-area',
@@ -80,21 +103,20 @@ export default defineComponent({
   setup(props, { emit }) {
     const specialInputState = SpecialInputStore.injector()
     const specialInputStateWrap = makeComputedObject(specialInputState)
-    const characterState = CharacterStore.injector()
     const userState = UserStore.injector()
+    const scenarioState = ScenarioStore.injector()
+    const characterState = CharacterStore.injector()
 
-    const characterList = computed(() => {
-      const owner = specialInputState.from.key
-      return characterState.characterList
-        .filter(c => userState.selfUser?.type === 'gm' || c.owner === userState.selfUser?.key)
-        .sort((c1, c2) => {
-          if (c1.key === owner) return -1
-          if (c2.key === owner) return 1
-          if (c1.owner === userState.selfUser?.key) return -1
-          if (c2.owner === userState.selfUser?.key) return 1
-          return 0
-        })
-    })
+    const fromList = ref<{ name: string, key: string | null }[]>([])
+    const targetList = ref<{ name: string, key: string | null }[]>([])
+    watch([
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand
+    ], () => {
+      fromList.value = scenarioState.getSelfList()
+      targetList.value = scenarioState.getAllList()
+    }, { immediate: true, deep: true })
 
     const fromKey = ref<string | null>(specialInputState.from.key)
     watch(() => specialInputState.from.key, () => {
@@ -108,22 +130,20 @@ export default defineComponent({
     })
 
     // キャラクターデータ
-    const characterRef = ref<Character | null>(characterList.value.find(c => c.key === fromKey.value)?.data || null)
+    const characterRef = ref<Character | null>(null)
     watch(fromKey, () => {
-      characterRef.value = characterList.value.find(c => c.key === fromKey.value)?.data || null
-    })
+      characterRef.value = characterState.characterList.find(c => c.key === fromKey.value)?.data || null
+    }, { immediate: true })
 
     // 忍法データ
-    const ninjaArtsList = ref<NinjaArts[]>(characterList.value.find(c => c.key === fromKey.value)?.data?.sheetInfo.ninjaArtsList || [])
-    watch(() => characterList.value.find(c => c.key === fromKey.value)?.data?.sheetInfo.ninjaArtsList, () => {
-      ninjaArtsList.value.splice(0, ninjaArtsList.value.length, ...(characterList.value.find(c => c.key === fromKey.value)?.data?.sheetInfo.ninjaArtsList || []))
-    }, { deep: true })
-
-    // 習得済み特技
-    // const learnedSkillList = ref<string[] | null>(characterRef.value ? characterRef.value.sheetInfo.skill.learnedList.map(l => l.name) || null : null)
-    // watch(() => characterRef.value?.sheetInfo.skill.learnedList, () => {
-    //   learnedSkillList.value = characterRef.value ? characterRef.value.sheetInfo.skill.learnedList.map(l => l.name) || null : null
-    // }, { deep: true })
+    const ninjaArtsList = ref<NinjaArts[]>([])
+    watch(() => characterState.characterList.find(c => c.key === fromKey.value)?.data?.sheetInfo.ninjaArtsList, () => {
+      ninjaArtsList.value.splice(
+        0,
+        ninjaArtsList.value.length,
+        ...(characterState.characterList.find(c => c.key === fromKey.value)?.data?.sheetInfo.ninjaArtsList || [])
+      )
+    }, { immediate: true, deep: true })
 
     // 目標値計算結果
     const targetValueList = ref<TargetValueCalcResult[]>([])
@@ -151,6 +171,14 @@ export default defineComponent({
     const cmdTypeRaw = ref<SpecialInputType>(specialInputState.cmdType)
     watch(() => specialInputState.cmdType, () => {
       cmdTypeRaw.value = specialInputState.cmdType
+      if (specialInputState.cmdType !== 'normal') {
+        const pc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(p => p._characterKey === specialInputState.from.key) || null
+        const npc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(p => p._characterKey === specialInputState.from.key) || null
+        const rightHand = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(p => p._characterKey === specialInputState.from.key) || null
+        const scenarioData: VelocityChitBase | null = pc || npc || rightHand || null
+        const plot = scenarioData?.plot || 0
+        specialInputState.setFumble(plot < 0 ? 2 : plot)
+      }
     })
     watch(cmdTypeRaw, () => {
       specialInputState.setCmdType(cmdTypeRaw.value)
@@ -170,7 +198,8 @@ export default defineComponent({
       targetValueList,
       fromKey,
       toKey,
-      characterList,
+      fromList,
+      targetList,
       ninjaArtsList,
       ...specialInputStateWrap,
       close,

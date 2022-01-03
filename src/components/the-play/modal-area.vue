@@ -152,36 +152,31 @@ export default defineComponent({
     width: 50%;
     height: 4px;
     background: #000;
-    transform-origin: 0 50%;
     position: absolute;
-    top: 12px;
     left: 25%;
     transition: 0.3s;
+    transition-property: width, transform;
 
+    &:nth-of-type(1) {
+      transform-origin: left bottom;
+      top: 23%;
+    }
     &:nth-of-type(2) {
-      top: 22px;
+      top: 45%;
     }
     &:nth-of-type(3) {
-      top: 32px;
+      transform-origin: left top;
+      top: 67%;
     }
   }
 
   &.closed .hr {
-    left: 30%;
-
     &:nth-of-type(1) {
-      transform: rotate(45deg);
-      width: 58%;
-    }
-
-    &:nth-of-type(2) {
-      opacity: 0;
+      transform: translateY(calc(#{common.$header-height} * 0.22 + 1px)) rotate(-45deg) scaleX(0.7);
     }
 
     &:nth-of-type(3) {
-      top: 32px;
-      transform: rotate(-45deg);
-      width: 58%;
+      transform: translateY(calc(#{common.$header-height} * -0.22 - 1px)) rotate(45deg) scaleX(0.7);
     }
   }
 }
@@ -226,7 +221,8 @@ export default defineComponent({
     background-color: white;
     border-top: 1px solid #495478;
     border-left: 1px solid #495478;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: scroll;
 
     details {
       position: relative;

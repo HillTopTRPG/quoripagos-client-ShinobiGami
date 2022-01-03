@@ -1,8 +1,10 @@
 <template>
-  <scenario-pc v-if="type === 'pc'" :target="target" mode="character" />
-  <scenario-npc v-if="type === 'npc'" :target="target" mode="character" />
-  <scenario-right-hand v-if="type === 'right-hand'" :target="target" mode="character" />
-  <scenario-enigma v-if="type === 'enigma'" :target="target" mode="character" />
+  <div class="v-box">
+    <scenario-pc v-if="type === 'pc'" :target="target" mode="character" />
+    <scenario-npc v-if="type === 'npc'" :target="target" mode="character" />
+    <scenario-right-hand v-if="type === 'right-hand'" :target="target" mode="character" />
+    <scenario-enigma v-if="type === 'enigma'" :target="target" mode="character" />
+  </div>
 
   <label class="message" v-if="isOwn">入力内容はリアルタイムで反映されます（画像はアップロードボタンで反映）</label>
   <label class="message" v-else>閲覧のみ可能です。</label>
@@ -21,7 +23,7 @@
             type="radio"
             :id="n.key"
             v-if="n.type === 'uploaded'"
-            :name="`current-chit-image`"
+            :name="`current-chit-image-${target}`"
             @change="currentChitImage = $event.target.value"
             :checked="chitImageList.filter(d => d.type === 'uploaded').findIndex(d => d.key === n.key) === Number(currentChitImage)"
             :value="chitImageList.filter(d => d.type === 'uploaded').findIndex(d => d.key === n.key)"
@@ -47,7 +49,7 @@
             type="radio"
             :id="n.key"
             v-if="n.type === 'uploaded'"
-            :name="`current-chit-image`"
+            :name="`current-stand-image-${target}`"
             @change="currentStandImage = $event.target.value"
             :checked="standImageList.filter(d => d.type === 'uploaded').findIndex(d => d.key === n.key) === Number(currentStandImage)"
             :value="standImageList.filter(d => d.type === 'uploaded').findIndex(d => d.key === n.key)"
@@ -334,7 +336,15 @@ export default defineComponent({
         return
       }
 
-      if (character.value && character.value.data) character.value.data.sheetInfo = rd
+      if (character.value && character.value.data) {
+        character.value.data.sheetInfo.specialArtsList.forEach(saOld => {
+          const sa = rd.specialArtsList.find(sa => sa.name === saOld.name)
+          if (sa) {
+            sa._openList = saOld._openList
+          }
+        })
+        character.value.data.sheetInfo = rd
+      }
     }
 
     const isOwn = ref(false)
@@ -368,9 +378,7 @@ export default defineComponent({
       standImageList,
       currentChitImage,
       currentStandImage,
-      onUpdateImage,
-      isOpen: (openList: string[]) => userState.selfUser?.refList.some(r => openList.some(o => o === r.key)),
-      refList: computed(() => userState.selfUser?.refList || [])
+      onUpdateImage
     }
   }
 })
@@ -382,6 +390,10 @@ export default defineComponent({
 .v-box {
   @include common.flex-box(column, flex-start, flex-start, wrap);
   gap: 0.5em;
+}
+
+@include common.deep("h2") {
+  margin-bottom: -0.5rem;
 }
 
 .image-upload-btn {

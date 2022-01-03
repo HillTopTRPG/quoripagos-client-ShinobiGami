@@ -32,7 +32,7 @@
           <th class="type" v-show="viewMode !== 'alt'">種別</th>
           <th class="point" v-show="viewMode !== 'alt'">功績点</th>
           <th class="effect" v-show="viewMode === 'normal'">効果</th>
-          <th v-if="viewMode === 'alt'">入替</th>
+          <th class="draggable-handle" v-if="viewMode === 'alt'">入替</th>
           <th class="delete-btn" v-if="viewMode === 'alt'">削除</th>
         </tr>
         </thead>
@@ -66,7 +66,7 @@
             <textarea v-model="element.background.effect" v-else></textarea>
           </td>
           <td v-if="viewMode === 'alt'" class="draggable-handle"></td>
-          <td v-if="viewMode === 'alt'"><button @click="onDelete(element.idx)">削除</button></td>
+          <td v-if="viewMode === 'alt'" class="delete-btn"><button @click="onDelete(element.idx)">削除</button></td>
         </tr>
         </tbody>
       </template>
@@ -207,7 +207,7 @@ export default defineComponent({
   gap: 0.5rem
 }
 
-h2:deep() {
+@include common.deep("h2") {
   &.normal {
     width: calc(var(--sheet-font-size) * (13 + 4 + 4 + 15) + 4px + 1px);
   }
@@ -215,11 +215,11 @@ h2:deep() {
     width: calc(var(--sheet-font-size) * (13 + 4 + 4) + 3px + 1px);
   }
   &.alt {
-    width: calc(var(--sheet-font-size) * (13 + 3 + 4) + 3px + 1px);
+    width: calc(var(--sheet-font-size) * (13 + 4 + 4) + 3px + 1px);
   }
 }
 
-.draggable-handle {
+td.draggable-handle {
   min-width: 3em;
   background-color: lightgray;
   background-image: radial-gradient(white 30%, transparent 30%);
@@ -310,22 +310,31 @@ table.background {
 
   .name {
     white-space: nowrap;
-    width: 13em;
+    @include set-width(13em);
+  }
+
+  .draggable-handle,
+  .delete-btn {
+    @include set-width(4em);
+
+    button {
+      width: 100%;
+    }
   }
 
   .type {
     white-space: nowrap;
-    width: 4em;
+    @include set-width(4em);
   }
 
   .point {
     white-space: nowrap;
-    width: 4em;
+    @include set-width(4em);
   }
 
   .effect {
     white-space: break-spaces;
-    min-width: 15em;
+    @include set-width(15em);
 
     textarea {
       width: 100%;

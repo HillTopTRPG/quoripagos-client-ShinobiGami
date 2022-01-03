@@ -1,6 +1,6 @@
 <template>
   <view-mode
-    title="NPC"
+    :title="mode === 'detail' ? '' : 'NPC'"
     :class="mode"
     :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
@@ -74,6 +74,7 @@
                 <textarea :id="`npc-${element.idx}-secret`" v-if="isGm && mode === 'scenario'" v-model="element.raw.secret"></textarea>
                 <template v-else>
                   <template v-if="isGm || getChitStatus(element.raw).isSecretOpen">{{ element.raw.secret }}</template>
+                  <template v-else>[あなたはこの秘密を知らない]</template>
                 </template>
               </td>
             </tr>
@@ -86,12 +87,12 @@
                   type="npc"
                   :character-key="element.raw._characterKey"
                   :jurisdiction-list="element.raw._sheetOpenList"
-                  @push="(type, cKey) => onPush('sheet-open', type, cKey)"
+                  @push="(type, cKey) => onJurisdictionChecked('sheet-open', type, cKey)"
                 />
               </td>
             </tr>
             <tr v-if="!element.raw.secretcheck" v-show="viewMode !== 'alt'">
-              <th>この秘密の<br />保持者</th>
+              <th>この秘密の<br />保持者<br />(GMのみ変更可)</th>
               <td class="secret-owner" :colspan="3">
                 <scenario-jurisdiction-check
                   :types="['pc', 'npc', 'right-hand']"
@@ -99,12 +100,12 @@
                   type="npc"
                   :character-key="element.raw._characterKey"
                   :jurisdiction-list="element.raw._secretOpenList"
-                  @push="(type, cKey) => onPush('secret', type, cKey)"
+                  @push="(type, cKey) => onJurisdictionChecked('secret', type, cKey)"
                 />
               </td>
             </tr>
             <tr v-if="!element.raw.secretcheck" v-show="viewMode !== 'alt'">
-              <th>この居所の<br />保持者</th>
+              <th>この居所の<br />保持者<br />(GMのみ変更可)</th>
               <td class="secret-owner" :colspan="3">
                 <scenario-jurisdiction-check
                   :types="['pc', 'npc', 'right-hand']"
@@ -112,7 +113,7 @@
                   type="npc"
                   :character-key="element.raw._characterKey"
                   :jurisdiction-list="element.raw._placementOpenList"
-                  @push="(type, cKey) => onPush('placement', type, cKey)"
+                  @push="(type, cKey) => onJurisdictionChecked('placement', type, cKey)"
                 />
               </td>
             </tr>
@@ -141,7 +142,7 @@ export default defineComponent({
   components: { ScenarioJurisdictionCheck, ViewMode, draggable },
   props: {
     mode: {
-      type: String as PropType<'scenario' | 'character'>,
+      type: String as PropType<'scenario' | 'character' | 'detail'>,
       required: true
     },
     target: {
@@ -230,7 +231,7 @@ export default defineComponent({
   gap: 0.5em;
 }
 
-h2:deep() {
+@include common.deep("h2") {
   width: calc(var(--sheet-font-size) * 45);
 }
 

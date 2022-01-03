@@ -18,7 +18,7 @@
           <span class="from-label">{{ getFromLabel(chatHistoryList[0].viewTextInfo || null) }}</span>
           <span class="chat-text">{{ chatHistoryList[0].viewTextInfo?.text }}</span>
           <div class="dice-result">
-            <span class="dice-roll-scf" v-if="chatHistoryList[0].viewTextInfo?.diceRollResult">{{ chatHistoryList[0].viewTextInfo?.diceRollResult }}</span>
+            <span class="dice-roll-result" v-if="chatHistoryList[0].viewTextInfo?.diceRollResult">{{ chatHistoryList[0].viewTextInfo?.diceRollResult }}</span>
             <span>{{ chatHistoryList[0].viewTextInfo?.diceText }}</span>
           </div>
         </div>
@@ -44,7 +44,7 @@
               <span class="from-label">{{ getFromLabel(h.viewTextInfo || null) }}</span>
               <span class="chat-text">{{ h.viewTextInfo?.text }}</span>
               <div class="dice-result">
-                <span class="dice-roll-scf" v-if="h.viewTextInfo?.diceRollResult">{{ h.viewTextInfo?.diceRollResult }}</span>
+                <span class="dice-roll-result" v-if="h.viewTextInfo?.diceRollResult">{{ h.viewTextInfo?.diceRollResult }}</span>
                 <span>{{ h.viewTextInfo?.diceText }}</span>
               </div>
             </div>
@@ -61,7 +61,7 @@
             <span class="chat-text">{{ c.data?.raw }}</span>
           </div>
           <div class="chat dice-result" :style="getChatStyle(c.data, 0)" v-if="c.data?.diceRaw">
-            <span class="dice-roll-scf" v-if="c.data?.diceType === 'dice-roll-scf'">{{ c.data?.diceRollResult }}</span>
+            <span class="dice-roll-result" v-if="c.data?.diceRollResult">{{ c.data?.diceRollResult }}</span>
             {{ c.data?.diceRaw }}
           </div>
         </template>
@@ -76,17 +76,18 @@
           <button @click="onChangeMode('SG')">SGコマンド</button>
         </div>
         <textarea
-          class="chat-input"
+          id="chat-input"
           v-model="chatInput"
           @keypress.enter.prevent="sendMessage($event, true)"
           @keyup.enter.prevent="sendMessage($event, false)"
-          placeholder="メッセージ（改行はShift + Enter）"
+          :placeholder="`チャット入力欄${isMobile ? '' : '（改行はShift + Enter）'}`"
         ></textarea>
+        <button v-if="isMobile" @click="sendMessage($event)">送信</button>
       </template>
       <template #top-box>
+        <scene-status-area />
       </template>
       <template #simple-center>
-        <scene-status-area />
         <character-status-area />
       </template>
       <template #dramatic-scene>
@@ -109,14 +110,20 @@
           <character-detail-view
             type="npc"
             :target="d._characterKey"
-            v-if="d._hasSheet && (isGm || !d.secretcheck && getChitStatus('npc', d._characterKey).isSheetShow)"
+            v-if="isGm || !d.secretcheck"
           />
         </template>
         <template v-for="d in rightHandList" :key="d._characterKey">
           <character-detail-view
             type="right-hand"
             :target="d._characterKey"
-            v-if="d._hasSheet && (isGm || !d._secretCheck && getChitStatus('right-hand', d._characterKey).isSheetShow)"
+            v-if="isGm || !d._secretCheck"
+          />
+        </template>
+        <template v-for="d in enigmaList" :key="d.name">
+          <character-detail-view
+            type="enigma"
+            :target="d.name"
           />
         </template>
       </template>
@@ -162,7 +169,6 @@ export default defineComponent({
     const characterState = CharacterStore.injector()
     const mediaListState = MediaListStore.injector()
     const specialInputState = SpecialInputStore.injector()
-    specialInputState.characterState = characterState
     const chatBottomElm = ref<HTMLElement | null>(null)
     const userSettingState = UserSettingStore.injector()
     const chatListState = ChatListStore.injector()
@@ -173,25 +179,15 @@ export default defineComponent({
     const characterList = computed(() => characterState.characterList)
     const selfUserRef = computed(() => userState.selfUser || null)
     const targetCharacterList = ref<{ name: string, key: string | null }[]>([])
-    watch([() => userState.selfUser?.refList, () => characterState.characterList], () => {
-      targetCharacterList.value = scenarioState.currentScenario.sheetInfo.pc
-        .filter(p => p._userKey === userState.selfUser?.key)
-        .map(p => {
-          const pcName = p.name
-          const characterName = characterState.characterList.find(c => c.key === p._characterKey)?.data?.sheetInfo.characterName || ''
-          return {
-            name: `PC ${pcName} ${characterName}`,
-            key: p._characterKey
-          }
-        })
-      // targetCharacterList.value = userState.selfUserRef?.refList?.filter(r => r.type === 'character')
-      //   .map(r => ({ name: characterState.characterList.find(c => c.key === r.key)?.data?.sheetInfo.characterName || '', key: r.key }))
-      //   .filter(cn => cn.name) || []
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+    watch(() => characterState.characterList, () => {
+      targetCharacterList.value = scenarioState.getSelfList()
     }, { deep: true, immediate: true })
 
-    const pcList = computed(() => scenarioState.currentScenario.sheetInfo.pc)
-    const npcList = computed(() => scenarioState.currentScenario.sheetInfo.npc)
-    const rightHandList = computed(() => scenarioState.currentScenario.sheetInfo.righthand)
+    const pcList = computed(() => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc)
+    const npcList = computed(() => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc)
+    const rightHandList = computed(() => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand)
+    const enigmaList = computed(() => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalStyle = reactive<any>({})
@@ -213,7 +209,7 @@ export default defineComponent({
 
     const chatInput = ref('')
 
-    const getDiceRollResultText = (bcdiceResultText: string | null | undefined): string => {
+    const getDiceRollResultText = (bcdiceResultText: string | null | undefined): string | null => {
       let raw = bcdiceResultText || ''
       const idx1 = raw.indexOf('→')
       if (idx1 > -1) {
@@ -222,10 +218,10 @@ export default defineComponent({
           raw = raw.substring(idx1 + 1, idx2).trim()
         }
       }
-      return raw
+      return raw || null
     }
 
-    const diceRollAndChat = async (cmd: string): Promise<{ insertChat: () => Promise<void>; bcdiceResult: BcdiceDiceRollResult | null }> => {
+    const diceRollAndChat = async (cmd: string, fromKey: string): Promise<{ insertChat: () => Promise<void>; bcdiceResult: BcdiceDiceRollResult | null }> => {
       let bcdiceResult: BcdiceDiceRollResult | null = null
       try {
         bcdiceResult = await chatListState.diceRoll(cmd)
@@ -238,16 +234,20 @@ export default defineComponent({
       return {
         bcdiceResult,
         insertChat: async () => {
-          const diceRaw = getDiceRollResultText(bcdiceResult?.text)
+          let fromType: 'user' | 'pc' | 'npc' | 'right-hand' | null = null
+          if (fromKey === selfUserRef.value?.key) fromType = 'user'
+          if (!fromType && scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.some(p => p._characterKey === fromKey)) fromType = 'pc'
+          if (!fromType && scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.some(p => p._characterKey === fromKey)) fromType = 'npc'
+          if (!fromType && scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.some(p => p._characterKey === fromKey)) fromType = 'right-hand'
           await chatListState.insertData({
             raw: cmd,
-            diceRaw,
+            diceRaw: getDiceRollResultText(bcdiceResult?.text),
             tag: [''],
             tab: '',
             type: 'chat',
             diceType: bcdiceResult ? diceResult ? 'dice-roll-scf' : 'dice-roll' : null,
-            fromType: from.value === selfUserRef.value?.key ? 'user' : 'character',
-            from: from.value || '',
+            fromType: fromType || 'user',
+            from: fromKey || '',
             diceRollResult: bcdiceResult ? diceResult || null : null,
             rands: bcdiceResult?.rands || null
           })
@@ -261,7 +261,7 @@ export default defineComponent({
       key: string;
       viewTextInfo: {
         type: 'chat' | 'system';
-        fromType: 'character' | 'user';
+        fromType: 'user' | 'pc' | 'npc' | 'right-hand';
         text: string;
         from: string;
         diceText: string | null;
@@ -285,12 +285,39 @@ export default defineComponent({
       if (!chat) return {}
       const result: Record<string, string> = {}
       if (num === 1) console.log(JSON.stringify(chat))
-      if (chat.fromType === 'character') {
-        const c = characterState.characterList.find(c => c.key === chat.from)
-        const pc = scenarioState.currentScenario.sheetInfo.pc.find(d => d._characterKey === c?.key)
-        const npc = scenarioState.currentScenario.sheetInfo.npc.find(d => d._characterKey === c?.key)
-        const rightHand = scenarioState.currentScenario.sheetInfo.righthand.find(d => d._characterKey === c?.key)
-        result['--color'] = pc?.color || npc?.color || rightHand?.color || '#000'
+      const setPc = () => {
+        if (!result['--color']) {
+          const pc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(d => d._characterKey === chat.from)
+          result['--color'] = pc?.color || ''
+        }
+      }
+      const setNpc = () => {
+        if (!result['--color']) {
+          const npc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(d => d._characterKey === chat.from)
+          result['--color'] = npc?.color || ''
+        }
+      }
+      const setRightHand = () => {
+        if (!result['--color']) {
+          const rightHand = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(d => d._characterKey === chat.from)
+          result['--color'] = rightHand?.color || ''
+        }
+      }
+      if (chat.fromType === 'pc') {
+        setPc()
+        setNpc()
+        setRightHand()
+        if (!result['--color']) result['--color'] = '#000'
+      } else if (chat.fromType === 'npc') {
+        setNpc()
+        setPc()
+        setRightHand()
+        if (!result['--color']) result['--color'] = '#000'
+      } else if (chat.fromType === 'right-hand') {
+        setRightHand()
+        setPc()
+        setNpc()
+        if (!result['--color']) result['--color'] = '#000'
       } else {
         const userSetting = userSettingState.userSettingList.find(us => us.data?.userKey === chat.from)
         result['--color'] = userSetting?.data?.fontColor || '#000'
@@ -300,29 +327,53 @@ export default defineComponent({
 
     const getFromLabel = (chat: ChatStore | null): string => {
       if (!chat) return ''
-      let fromLabel: string
-      if (chat.type === 'system') {
-        fromLabel = 'System'
-      } else {
-        if (chat.fromType === 'character') {
-          const c = characterState.characterList.find(c => c.key === chat.from)
-          fromLabel = c?.data?.sheetInfo.characterName || ''
-        } else {
-          const u = userState.userList.find(u => u.key === chat.from)
-          fromLabel = `${u?.name || '???'}(${u?.type.toUpperCase() || '??'})`
+      let fromLabel: string | null = null
+      const setPc = () => {
+        if (fromLabel === null) {
+          const pc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(d => d._characterKey === chat.from)
+          if (pc) {
+            const character = characterState.characterList.find(c => c.key === chat.from)
+            fromLabel = `PC ${pc.name} ${character?.data?.sheetInfo.characterName || ''}` || null
+          }
         }
       }
-      // if (fromLabel) fromLabel += '：'
-      return fromLabel
+      const setNpc = () => {
+        if (fromLabel === null) {
+          const npc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(d => d._characterKey === chat.from)
+          fromLabel = npc ? `NPC ${npc.name}` : null
+        }
+      }
+      const setRightHand = () => {
+        if (fromLabel === null) {
+          const rightHand = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(d => d._characterKey === chat.from)
+          fromLabel = rightHand ? `腹心 ${rightHand.name}` : null
+        }
+      }
+      if (chat.fromType === 'pc') {
+        setPc()
+        setNpc()
+        setRightHand()
+      } else if (chat.fromType === 'npc') {
+        setNpc()
+        setPc()
+        setRightHand()
+      } else if (chat.fromType === 'right-hand') {
+        setRightHand()
+        setPc()
+        setNpc()
+      } else {
+        const u = userState.userList.find(u => u.key === chat.from)
+        fromLabel = `${u?.name || '???'}(${u?.type.toUpperCase() || '??'})`
+      }
+      return `${fromLabel || '???'}${chat.type === 'system' ? '(System)' : ''}`
     }
 
     const randsToPips = (chat: ChatStore, key: string): Promise<void> => {
       return new Promise<void>(resolve => {
         const style = getChatStyle(chat, -1)
-        const character = chat.fromType === 'character' ? characterState.characterList.find(c => c.key === chat.from) || null : null
-        const pc = scenarioState.currentScenario.sheetInfo.pc.find(d => d._characterKey === character?.key)
-        const npc = scenarioState.currentScenario.sheetInfo.npc.find(d => d._characterKey === character?.key)
-        const rightHand = scenarioState.currentScenario.sheetInfo.righthand.find(d => d._characterKey === character?.key)
+        const pc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(d => d._characterKey === chat.from)
+        const npc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(d => d._characterKey === chat.from)
+        const rightHand = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(d => d._characterKey === chat.from)
         const standImageList = pc?.standImageList || npc?.standImageList || rightHand?.standImageList
         const currentStandImage = (pc?.currentStandImage !== undefined && pc?.currentStandImage) ||
           (npc?.currentStandImage !== undefined && npc?.currentStandImage) ||
@@ -331,6 +382,8 @@ export default defineComponent({
         const standImageUrl = mediaListState.list.find(n => n.key === standImageKey)?.data?.url || null
 
         console.log(chat.raw, style['--color'] || '#000')
+
+        const isMe = (pc && pc._userKey === selfUserRef.value?.key) || (!pc && selfUserRef.value?.type === 'gm')
 
         chatHistoryList.value.unshift({
           key,
@@ -343,7 +396,7 @@ export default defineComponent({
             diceRollResult: chat.diceRollResult,
             color: style['--color'] || '#000',
             standImage: standImageUrl ? `url('${standImageUrl}')` : null,
-            isMe: chat.from === selfUserRef.value?.key || userState.selfUser?.refList.some(r => r.key === chat.from) || false
+            isMe
           },
           pips: chat.rands
             ?.map((r): [string, number] | null => {
@@ -372,8 +425,10 @@ export default defineComponent({
     const onDiceCommand = async () => {
       const command = specialInputState.command
       specialInputState.setCmdType('normal')
-      const { insertChat } = await diceRollAndChat(command)
-      await insertChat()
+      if (specialInputState.from.key) {
+        const { insertChat } = await diceRollAndChat(command, specialInputState.from.key)
+        await insertChat()
+      }
     }
 
     const chatList = computed(() => chatListState.list)
@@ -388,15 +443,24 @@ export default defineComponent({
         }
       }
     })
-    const isGm = computed(() => userState.selfUser?.type === 'gm')
 
     const battleField = computed(() => roomSettingState.roomSetting?.battleField)
+    const isMobile = computed(() => Boolean(navigator.userAgent.match(/Mobile/)))
 
     const enterPressing = ref(false)
-    const sendMessage = async (event: KeyboardEvent, flg: boolean): Promise<void> => {
-      if (enterPressing.value === flg) return
-      enterPressing.value = flg
-      if (!flg) return
+    const sendMessage = async (event: KeyboardEvent, flg?: boolean): Promise<void> => {
+      if (flg === undefined) {
+        enterPressing.value = false
+      } else {
+        if (isMobile.value) {
+          if (flg) chatInput.value += '\n'
+          enterPressing.value = false
+          return
+        }
+        if (enterPressing.value === flg) return
+        enterPressing.value = flg
+        if (!flg) return
+      }
 
       if (event && event.shiftKey) {
         const textArea: HTMLTextAreaElement = event.target as HTMLTextAreaElement
@@ -414,9 +478,11 @@ export default defineComponent({
       }
       if (chatInput.value === '') return
 
-      const { insertChat } = await diceRollAndChat(chatInput.value)
-      chatInput.value = ''
-      await insertChat()
+      if (from.value) {
+        const { insertChat } = await diceRollAndChat(chatInput.value, from.value)
+        chatInput.value = ''
+        await insertChat()
+      }
     }
 
     const getTimeFormat = (dateTime: number | null): string => {
@@ -434,6 +500,7 @@ export default defineComponent({
       pcList,
       npcList,
       rightHandList,
+      enigmaList,
       bottomHeight,
       chatHistoryList,
       onEndDiceRoll,
@@ -451,10 +518,10 @@ export default defineComponent({
       chatList,
       getFromLabel,
       getChatStyle,
-      isOpen: (openList: string[]) => userState.selfUser?.refList.some(r => openList.some(o => o === r.key)),
       battleField,
       sendMessage,
-      getTimeFormat
+      getTimeFormat,
+      isMobile
     }
   },
   name: 'the-play'
@@ -470,7 +537,7 @@ export default defineComponent({
   position: absolute;
   right: 0;
   top: 0;
-  bottom: 0;
+  height: calc(var(--vh, 1vh) * 100);
   width: 100vw;
   box-sizing: border-box;
 
@@ -565,7 +632,7 @@ export default defineComponent({
   left: 10vw;
   right: 10vw;
   pointer-events: none;
-  top: 0;
+  top: common.$header-height;
   bottom: var(--bottom);
   overflow: visible;
   box-sizing: border-box;
@@ -649,6 +716,8 @@ export default defineComponent({
     background-position: center bottom;
     background-repeat: no-repeat;
     background-size: contain;
+    pointer-events: all;
+    cursor: pointer;
   }
 }
 
@@ -662,7 +731,8 @@ export default defineComponent({
   height: common.$dice-size;
   overflow: visible;
   z-index: 40000;
-  transform: translateX(calc((var(--dice-count) - var(--offset) - 1) * -#{common.$dice-size}));
+  background-color: rgba(255, 255, 255, 0.5);
+  transform: translateX(calc((var(--dice-count) - var(--offset) - 1) * -#{common.$dice-size} - var(--offset) * 0.7px));
 
   @mixin dice-image($type, $pips) {
     &.#{$type}-#{$pips} .dice {
@@ -729,7 +799,7 @@ export default defineComponent({
   }
 }
 
-.dice-roll-scf {
+.dice-roll-result {
   border: 1px solid gray;
   border-radius: 3px;
   padding: 0 0.2rem;
@@ -748,7 +818,6 @@ textarea {
 }
 
 @include common.deep(".right-box") {
-  gap: 0.5rem;
   scroll-behavior: smooth;
   white-space: pre-wrap;
   text-align: left;
@@ -763,7 +832,7 @@ textarea {
     }
   }
 
-  .chat-input {
+  #chat-input {
     flex: 1;
     resize: none;
   }
@@ -794,6 +863,7 @@ textarea {
   bottom: 0;
   left: 0;
   right: 0;
+  gap: 0.5rem;
 }
 @include common.deep("#section-core") {
   gap: 0.5rem 0.5rem;
@@ -802,9 +872,9 @@ textarea {
   background-size: cover;
   background-origin: content-box;
   background-repeat: no-repeat;
+  position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  position: relative;
 
   .effect-container {
     position: absolute;
@@ -857,7 +927,7 @@ textarea {
 
     @keyframes fall{
       to {
-        margin-top: 100vh;
+        margin-top: calc(var(--vh) * 100);
       }
     }
   }
@@ -1098,7 +1168,7 @@ textarea {
   $flame-num: 20;
   .flames {
     width: 100vw;
-    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
     //background: #3E1E68;
 
     span {

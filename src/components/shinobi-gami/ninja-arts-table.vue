@@ -1,5 +1,25 @@
 <template>
-  <div class="v-box">
+  <div v-if="mode === 'normal'" class="h-box">
+    <template v-for="ninjaArts in ninjaArtsListWrap" :key="ninjaArts.idx">
+      <div class="ninja-arts-chip" v-if="isGm || isOwn || !ninjaArts.ninjaArts.secret">
+        <span class="header">
+          <span class="type">{{ ninjaArts.ninjaArts.type }}忍法</span>
+          <span class="name">{{ ninjaArts.ninjaArts.name }}</span>
+          <span class="skill">{{ ninjaArts.ninjaArts.targetSkill }}</span>
+          <span class="info">{{ ninjaArts.ninjaArts.range }} / {{ ninjaArts.ninjaArts.cost }}</span>
+        </span>
+        <button @click="onViewContents(ninjaArts.idx)">内容確認</button>
+        <template v-if="isGm || isOwn">
+          <button @click="onUseArts(ninjaArts.idx)">使用宣言</button>
+          <button
+            @click="onSelectArts(ninjaArts.idx)"
+            :style="{ 'visibility': (ninjaArts.ninjaArts.type !== '装備' ? 'visible' : 'hidden') }"
+          >判定</button>
+        </template>
+      </div>
+    </template>
+  </div>
+  <div v-else class="v-box">
     <view-mode
       v-if="mode !== 'normal'"
       title="忍法"
@@ -114,9 +134,10 @@ import { v4 as uuidV4 } from 'uuid'
 import { NinjaArts, ShinobiGami, ShinobigamiHelper, SkillTable } from '@/core/utility/shinobigami'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import draggable from 'vuedraggable'
-import { questionDialog } from '@/core/utility/dialog'
+import { cutInDialog, questionDialog } from '@/core/utility/dialog'
 import ScenarioStore from '@/feature/scenario/data'
 import CharacterStore from '@/feature/character/data'
+import ChatListStore from '@/feature/chat-list/data'
 
 export default defineComponent({
   name: 'ninja-arts-table',
@@ -143,6 +164,7 @@ export default defineComponent({
     const scenarioState = ScenarioStore.injector()
     const characterState = CharacterStore.injector()
     const userState = UserStore.injector()
+    const chatListState = ChatListStore.injector()
 
     const sheetViewPass = ref('')
     const sheetInfoWrap = ref<ShinobiGami | null>(null)
@@ -181,11 +203,49 @@ export default defineComponent({
       currentColumn.value = type
     }
     const selectedArts = computed(() => props.selectIndex)
+    const onViewContents = async (index: number) => {
+      const ninjaArts = sheetInfoWrap.value?.ninjaArtsList[index]
+      await cutInDialog({
+        title: `${ninjaArts?.name || ''}`,
+        text: [
+          '<table>',
+          `<tr><th>指定特技</th><td>${ninjaArts?.targetSkill}</td></tr>`,
+          `<tr><th>間合</th><td>${ninjaArts?.range || 'なし'}</td></tr>`,
+          `<tr><th>コスト</th><td>${ninjaArts?.cost || 'なし'}</td></tr>`,
+          `<tr><th>ページ</th><td>${ninjaArts?.page}</td></tr>`,
+          `<tr><th>効果</th><td>${ninjaArts?.effect}</td></tr>`,
+          '</table>'
+        ].join('')
+      })
+    }
+    const onUseArts = async (index: number) => {
+      const ninjaArts = sheetInfoWrap.value?.ninjaArtsList[index]
+      if (!(await questionDialog({
+        title: '忍法使用宣言',
+        text: `${sheetInfoWrap.value?.characterName}の忍法「${ninjaArts?.name}」の情報をチャットに出力します。`,
+        confirmButtonText: 'はい',
+        cancelButtonText: 'キャンセル'
+      }))) return
+      await chatListState.insertData({
+        raw: `${ninjaArts?.name} ${ninjaArts?.type}忍法 指定特技：${ninjaArts?.targetSkill} 間合：${ninjaArts?.range} コスト：${ninjaArts?.cost} ページ：${ninjaArts?.page}\n${ninjaArts?.effect}`,
+        diceRaw: null,
+        tag: [''],
+        tab: '',
+        type: 'chat',
+        diceType: null,
+        fromType: props.type,
+        from: props.target,
+        diceRollResult: null,
+        rands: null
+      })
+    }
     const onSelectArts = (index: number) => {
       emit('update:selectIndex', selectedArts.value === index ? null : index)
       const ninjaArts = sheetInfoWrap.value?.ninjaArtsList[index]
       specialInputState.from.key = props.target
       specialInputState.setNinjaArts(ninjaArts?.name || null)
+      const skillTableElm = document.getElementById(`${props.type}-detail-${props.target}-skill`)
+      skillTableElm?.scrollIntoView(true)
     }
     const reloadNinjaArts = async () => {
       const helper = new ShinobigamiHelper(sheetInfoWrap.value?.url || '', sheetViewPass.value)
@@ -269,7 +329,9 @@ export default defineComponent({
       viewMode,
       onDelete,
       onDrag,
-      sheetInfoWrap
+      sheetInfoWrap,
+      onUseArts,
+      onViewContents
     }
   }
 })
@@ -287,7 +349,54 @@ export default defineComponent({
   gap: 0.5rem
 }
 
-h2:deep() {
+.h-box {
+  @include common.flex-box(row, flex-start, flex-start, wrap);
+  gap: 0.5rem;
+  padding: 0.2rem;
+}
+
+.ninja-arts-chip {
+  @include common.flex-box(column, stretch, flex-start);
+  font-size: var(--sheet-font-size);
+  box-shadow: rgba(0, 0, 0, 0.05) 0 6px 24px 0, rgba(0, 0, 0, 0.08) 0 0 0 1px;
+  border-radius: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+
+  .header {
+    @include common.flex-box(column, stretch, flex-start);
+    background-color: #252525;
+    position: relative;
+    color: white;
+    padding: 0.2rem 0.5rem;
+
+    .type {
+      text-align: right;
+    }
+
+    .name {
+      font-size: 1.4em;
+      font-weight: bold;
+      padding: 0.2rem 0;
+    }
+
+    .skill,
+    .info {
+      white-space: nowrap;
+      text-align: right;
+    }
+  }
+
+  > * {
+    white-space: nowrap;
+  }
+
+  button {
+    margin: 0.2rem 0.5rem;
+  }
+}
+
+@include common.deep("h2") {
   &.normal {
     width: calc(var(--sheet-font-size) * (2 + 10 + 5 + 8 + 3 + 3 + 15 + 3) + 8px + 1px);
   }
@@ -295,11 +404,11 @@ h2:deep() {
     width: calc(var(--sheet-font-size) * (2 + 10 + 5 + 8 + 3 + 3) + 6px + 1px);
   }
   &.alt {
-    width: calc(var(--sheet-font-size) * (2 + 10 + 8 + 3 + 4) + 5px + 1px);
+    width: calc(var(--sheet-font-size) * (2 + 10 + 8 + 4 + 4) + 5px + 1px);
   }
 }
 
-.draggable-handle {
+td.draggable-handle {
   min-width: 3em;
   background-color: lightgray;
   background-image: radial-gradient(white 30%, transparent 30%);
@@ -388,7 +497,7 @@ table.ninja-arts {
   }
 
   .secret {
-    width: 2em;
+    @include set-width(2em);
   }
 
   td.name,
@@ -398,44 +507,44 @@ table.ninja-arts {
 
   &.update .name,
   &.insert .name {
-    width: 10em;
+    @include set-width(10em);
   }
   .name {
     white-space: nowrap;
-    width: 3em;
+    @include set-width(3em);
   }
 
   .type {
     white-space: nowrap;
-    width: 5em;
+    @include set-width(5em);
   }
 
   &.update .target-skill,
   &.insert .target-skill {
-    width: 8em;
+    @include set-width(8em);
   }
   .target-skill {
     white-space: nowrap;
-    width: 4em;
+    @include set-width(4em);
   }
 
   .delete-btn {
-    width: 4em;
+    @include set-width(4em);
   }
 
   .range {
     white-space: nowrap;
-    width: 3em;
+    @include set-width(3em);
   }
 
   .cost {
     white-space: nowrap;
-    width: 3em;
+    @include set-width(3em);
   }
 
   .effect {
     white-space: break-spaces;
-    min-width: 15em;
+    @include set-width(15em);
 
     textarea {
       width: 100%;
@@ -443,6 +552,15 @@ table.ninja-arts {
       box-sizing: border-box;
       min-height: 2.5em;
       font-size: inherit;
+    }
+  }
+
+  .draggable-handle,
+  .delete-btn {
+    @include set-width(4em);
+
+    button {
+      width: 100%;
     }
   }
 
@@ -455,7 +573,7 @@ table.ninja-arts {
 
   .page {
     white-space: nowrap;
-    width: 3em;
+    @include set-width(3em);
   }
 }
 </style>

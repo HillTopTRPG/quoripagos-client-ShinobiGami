@@ -5,7 +5,7 @@
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
     :alt-label="'入替/削除'"
-    :editable="isGm && mode === 'scenario'"
+    :editable="isGm"
     v-model:viewMode="viewMode"
     :use-add="isGm"
     @add="onAdd()"
@@ -22,13 +22,12 @@
     handle=".grip-line"
   >
     <template #item="{element}">
-      <div class="summary-block">
+      <div class="summary-block" v-if="isGm || !element.raw.secret">
         <div class="grip-line" v-show="isGm && viewMode === 'alt'">
           <button @click="onDelete(element.idx)">削除</button>
         </div>
         <table class="summary">
           <tbody>
-          <template v-if="isGm || !element.raw.secret">
             <tr>
               <th><label :for="isGm ? `summary-title-${element.idx}-${elmId}` : ''">タイトル</label></th>
               <td class="title">
@@ -73,7 +72,6 @@
                 <button @click="sendCutIn(element.raw)">全員に表示</button>
               </td>
             </tr>
-          </template>
           </tbody>
         </table>
       </div>

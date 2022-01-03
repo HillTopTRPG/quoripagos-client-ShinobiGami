@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
 import { commonStoreDataProcess, makeStore, StoreUpdateProperties } from '@/core/utility/vue3'
-import { extname, StoreData } from '@/core/utility/FileUtility'
+import { extname, loadImage, StoreData } from '@/core/utility/FileUtility'
 
 type UrlType = 'youtube' | 'image' | 'music' | 'setting' | 'unknown'
 
@@ -67,12 +67,16 @@ export default makeStore<Store>('media-list-store', () => {
 
   const setup = async (): Promise<void> => {
     await requestData()
-    state.list.map(m => {
-      if (m.data?.urlType === 'image') {
-        const img = new Image()
-        img.src = m.data?.url
-      }
-    })
+
+    await state.list
+      .map(m => {
+        if (m.data?.urlType === 'image' && m.data?.url) {
+          return async () => { await loadImage(m.data?.url) }
+        }
+      })
+      .filter((f): f is (() => Promise<void>) => Boolean(f))
+      .reduce((prev, curr) => prev.then(curr), Promise.resolve())
+      .catch(() => { /**/ })
     state.ready = true
   }
   setup().then()

@@ -54,6 +54,7 @@
               v-model="roomPassword"
               autocomplete="new-password"
               name="room-password"
+              @focus="onFocus($event)"
             >
             <button class="room-btn" type="button" @click="loginRoom(r.roomNo, roomPassword)">確認</button>
           </template>
@@ -65,6 +66,7 @@
               placeholder="[必須] ユーザー名"
               autocomplete="username"
               name="username"
+              @focus="onFocus($event)"
             >
             <!-- ユーザー選択 -->
             <ul v-if="userList.length">
@@ -79,6 +81,7 @@
               v-model="userPassword"
               autocomplete="current-password"
               name="password"
+              @focus="onFocus($event)"
             >
             <button type="button" @click="loginUser(userName, userType, userPassword)" :disabled="!userName">ユーザログイン</button>
             <select ref="userTypeSelectElm" v-model="userType">
@@ -203,7 +206,13 @@ export default defineComponent({
           }, 10)
         }, 10)
       },
-      layoutData
+      layoutData,
+      onFocus: (event: { target: HTMLElement }) => {
+        console.log('onFocus')
+        setTimeout(() => {
+          event.target.scrollIntoView({ block: 'center' })
+        }, 100)
+      }
     }
   }
 })

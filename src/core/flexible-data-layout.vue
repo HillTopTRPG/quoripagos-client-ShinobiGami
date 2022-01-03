@@ -88,7 +88,7 @@ export function uiSize2css(size: UiSize): string {
     size.rem ? `${size.rem}rem` : '',
     size.px ? `${size.px}px` : '',
     size.vw ? `${size.vw}vw` : '',
-    size.vh ? `${size.vh}vh` : '',
+    size.vh ? `(var(--vh, 1vh) * ${size.vh})` : '',
     size.vmin ? `${size.vmin}vmin` : '',
     size.vmax ? `${size.vmax}vmax` : '',
     size.percent ? `${size.percent}%` : ''

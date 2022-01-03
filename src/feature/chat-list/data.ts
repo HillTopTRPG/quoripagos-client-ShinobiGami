@@ -26,7 +26,7 @@ export type ChatStore = {
   tag: string[];
   tab: string;
   from: string;
-  fromType: 'character' | 'user';
+  fromType: 'user' | 'pc' | 'npc' | 'right-hand';
   diceRollResult: string | null;
   rands: DiceResult[] | null;
 };

@@ -109,9 +109,6 @@ export default makeStore<Store>('socketStore', () => {
       // イベント受信
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       _socket.on('view-cut-in', (_: any, payload: { title: string, text: string, imageUrl: string | null, targetList?: string[] }) => {
-        if (payload.targetList && payload) {
-
-        }
         cutInDialog({ title: payload.title, text: payload.text }, payload.imageUrl)
       })
 

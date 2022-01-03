@@ -116,7 +116,7 @@ export default defineComponent({
   width: 100%;
 }
 
-.chit:deep() {
+@include common.deep(".chit") {
   cursor: pointer;
 }
 

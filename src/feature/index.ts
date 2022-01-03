@@ -30,7 +30,9 @@ const Plugin = {
         scenario,
         scene,
         tag,
-        userSetting,
+        userSetting
+      ],
+      [
         chatList,
         specialInput
       ]

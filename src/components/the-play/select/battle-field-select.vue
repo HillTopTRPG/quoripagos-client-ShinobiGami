@@ -35,6 +35,9 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
+span {
+  font-size: 80%;
+}
 select {
   height: 2em;
 }

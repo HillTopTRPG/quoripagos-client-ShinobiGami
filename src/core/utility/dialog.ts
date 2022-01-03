@@ -58,7 +58,7 @@ export async function cutInDialog(
     html: [
       `<div class="dialog-cutin-container ${imgVH ? 'vertical' : 'horizontal'}">`,
       (imageUrl ? `<div class="image" style="--image: url('${imageUrl}')"></div>` : ''),
-      `<div class="text">${obj.text.replaceAll('\n', '<br />')}</div>`,
+      `<div class="text">${obj.text}</div>`,
       '</div>'
     ].join('')
   }

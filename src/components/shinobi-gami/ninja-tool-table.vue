@@ -1,7 +1,24 @@
 <template>
-  <div class="v-box">
+  <div v-if="mode === 'normal' && (isGm || isOwn)" class="h-box">
+    <template v-for="ninjaTool in ninjaToolListWrap" :key="ninjaTool.idx">
+      <div class="ninja-tool-chip" v-for="n of ninjaTool.ninjaTool.count" :key="n">
+        <span class="header">
+          <span class="type">忍具</span>
+          <span class="name">{{ ninjaTool.ninjaTool.name }}</span>
+        </span>
+        <template v-if="isGm || isOwn">
+          <button @click="onViewContents(ninjaTool.idx)">内容確認</button>
+          <button @click="onUseTool(ninjaTool.idx)">使う</button>
+          <select @change="onSelectPresentTarget($event, ninjaTool.idx)" :value="''">
+            <option value="" disabled>渡し先</option>
+            <option :value="p.key" v-for="p in presentList" :key="p.key">{{ p.name }}</option>
+          </select>
+        </template>
+      </div>
+    </template>
+  </div>
+  <div v-if="mode !== 'normal'" class="v-box">
     <view-mode
-      v-if="mode !== 'normal'"
       title="忍具"
       normal-label="通常"
       :use-simple="true"
@@ -31,7 +48,7 @@
           <th class="name">名称</th>
           <th class="num" v-show="viewMode !== 'alt'">個数</th>
           <th class="effect" v-show="viewMode === 'normal'">効果</th>
-          <th v-if="viewMode === 'alt'">入替</th>
+          <th class="draggable-handle" v-if="viewMode === 'alt'">入替</th>
           <th class="delete-btn" v-if="viewMode === 'alt'">削除</th>
         </tr>
         </thead>
@@ -56,7 +73,7 @@
             <textarea v-model="element.ninjaTool.effect" v-else></textarea>
           </td>
           <td v-if="viewMode === 'alt'" class="draggable-handle"></td>
-          <td v-if="viewMode === 'alt'"><button @click="onDelete(element.idx)">削除</button></td>
+          <td v-if="viewMode === 'alt'" class="delete-btn"><button @click="onDelete(element.idx)">削除</button></td>
         </tr>
         </tbody>
       </template>
@@ -65,14 +82,18 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, ref, watch } from 'vue'
+import { computed, defineComponent, PropType, ref, watch } from 'vue'
 import { NinjaTool, ShinobiGami, ShinobigamiHelper } from '@/core/utility/shinobigami'
 import UserStore from '@/core/data/user'
 import ViewMode from '@/components/shinobi-gami/view-mode.vue'
 import draggable from 'vuedraggable'
-import { questionDialog } from '@/core/utility/dialog'
+import { cutInDialog, questionDialog } from '@/core/utility/dialog'
 import ScenarioStore from '@/feature/scenario/data'
 import CharacterStore from '@/feature/character/data'
+import ChatListStore from '@/feature/chat-list/data'
+import { clone } from '@/core/utility/typescript'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const escape = require('escape-html')
 
 export default defineComponent({
   name: 'ninja-tool-table',
@@ -87,7 +108,7 @@ export default defineComponent({
       default: null
     },
     mode: {
-      type: String as PropType<'normal' | 'view' | 'update' | 'insert'>,
+      type: String as PropType<'normal' | 'update'>,
       require: true
     }
   },
@@ -95,6 +116,78 @@ export default defineComponent({
     const scenarioState = ScenarioStore.injector()
     const characterState = CharacterStore.injector()
     const userState = UserStore.injector()
+    const chatListState = ChatListStore.injector()
+
+    const getFromName = (): string => {
+      let fromName = ''
+      if (props.type === 'pc') {
+        const pc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(p => p._characterKey === props.target)
+        const character = characterState.characterList.find(c => c.key === props.target)
+        fromName = `PC ${pc?.name || ''} ${character?.data?.sheetInfo.characterName || ''}`
+      }
+      if (props.type === 'npc') {
+        const npc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(p => p._characterKey === props.target)
+        fromName = `NPC ${npc?.name || ''}`
+      }
+      if (props.type === 'right-hand') {
+        const rightHand = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(p => p._characterKey === props.target)
+        fromName = `腹心 ${rightHand?.name || ''}`
+      }
+      return fromName
+    }
+
+    const presentList = ref<{ name: string, key: string }[]>([])
+    const onSelectPresentTarget = async (event: { target: HTMLSelectElement }, toolIndex: number) => {
+      const fromName: string = getFromName()
+      const ninjaTool = sheetInfoWrap.value?.ninjaToolList[toolIndex]
+      if (!ninjaTool) {
+        alert('指定された忍具は存在しません')
+        return
+      }
+
+      const toCharacter = characterState.characterList.find(c => c.key === event.target.value)
+      const ninjaToolList = toCharacter?.data?.sheetInfo.ninjaToolList
+      if (!ninjaToolList) {
+        alert('渡す先がいません')
+        return
+      }
+
+      const targetName = presentList.value.find(p => p.key === event.target.value)?.name || ''
+
+      if ((await questionDialog({
+        title: '忍具を渡す',
+        text: `${targetName}に「${ninjaTool.name}」を渡します。`,
+        confirmButtonText: '渡す',
+        cancelButtonText: 'キャンセル'
+      }))) {
+        ninjaTool.count--
+        const toNinjaTool = ninjaToolList.find(n => n.name === ninjaTool.name)
+        if (toNinjaTool) {
+          toNinjaTool.count++
+        } else {
+          const ninjaToolNew = clone(ninjaTool)
+          ninjaToolNew.count = 1
+          ninjaToolList.push(ninjaToolNew)
+        }
+
+        await chatListState.insertData({
+          raw: `${fromName}が${targetName}に「${ninjaTool.name}」を渡しました。`,
+          diceRaw: null,
+          tag: [''],
+          tab: '',
+          type: 'system',
+          diceType: null,
+          fromType: props.type,
+          from: props.target,
+          diceRollResult: null,
+          rands: null
+        })
+      }
+
+      setTimeout(() => {
+        event.target.value = ''
+      })
+    }
 
     const sheetViewPass = ref('')
     const sheetInfoWrap = ref<ShinobiGami | null>(null)
@@ -104,6 +197,8 @@ export default defineComponent({
     }, { immediate: true, deep: true })
 
     const isRawViewMode = ref(false)
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+    const isOwn = ref(false)
     watch([
       () => props.type,
       () => props.target,
@@ -112,12 +207,23 @@ export default defineComponent({
       () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
       () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
     ], () => {
-      const { isOwn } = scenarioState.getChitStatus(
+      const { isOwn: isOwnRaw } = scenarioState.getChitStatus(
         props.type,
         props.target,
         userState.selfUser?.key || null
       )
-      isRawViewMode.value = props.mode !== 'update' || (userState.selfUser?.type !== 'gm' && !isOwn)
+      isOwn.value = isOwnRaw
+      isRawViewMode.value = props.mode !== 'update' || (userState.selfUser?.type !== 'gm' && !isOwnRaw)
+      const pcList = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc
+        .filter(p => p._characterKey !== props.target)
+        .map(p => ({ name: `PC ${p.name} ${characterState.characterList.find(c => c.key === p._characterKey)?.data?.sheetInfo.characterName || ''}`, key: p._characterKey })) || []
+      const npcList = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc
+        .filter(p => p._characterKey !== props.target)
+        .map(p => ({ name: `NPC ${p.name}`, key: p._characterKey })) || []
+      const rightHandList = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand
+        .filter(p => p._characterKey !== props.target)
+        .map(p => ({ name: `腹心 ${p.name}`, key: p._characterKey })) || []
+      presentList.value = pcList.concat(...npcList).concat(...rightHandList)
     }, { immediate: true, deep: true })
 
     const reloadNinjaTool = async () => {
@@ -126,9 +232,7 @@ export default defineComponent({
         console.log('is not this')
         return
       }
-      const { data: rd, jsons } = await helper.getData()
-      console.log(jsons)
-      console.log(rd)
+      const { data: rd } = await helper.getData()
       if (!rd) return
       const ninjaToolList = sheetInfoWrap.value?.ninjaToolList
       ninjaToolList?.splice(0, ninjaToolList?.length || 0, ...rd.ninjaToolList)
@@ -170,14 +274,65 @@ export default defineComponent({
       }
     }
 
+    const onUseTool = async (index: number) => {
+      const fromName: string = getFromName()
+      const ninjaTool = sheetInfoWrap.value?.ninjaToolList[index]
+      if (!ninjaTool) {
+        alert('指定された忍具は存在しません')
+        return
+      }
+      if (!(await questionDialog({
+        title: '忍具使用',
+        text: `「${ninjaTool.name || ''}」を使用します。`,
+        confirmButtonText: '使用',
+        cancelButtonText: 'キャンセル'
+      }))) return
+      ninjaTool.count--
+      await chatListState.insertData({
+        raw: `${fromName}が「${ninjaTool.name}」を使用しました。`,
+        diceRaw: null,
+        tag: [''],
+        tab: '',
+        type: 'system',
+        diceType: null,
+        fromType: props.type,
+        from: props.target,
+        diceRollResult: null,
+        rands: null
+      })
+    }
+
+    const onViewContents = async (index: number) => {
+      const ninjaTool = sheetInfoWrap.value?.ninjaToolList[index]
+      if (!ninjaTool) {
+        alert('指定された忍具は存在しません')
+        return
+      }
+      await cutInDialog({
+        title: `${ninjaTool?.name || ''}`,
+        text: [
+          '<table>',
+          `<tr><th>保有個数</th><td>${ninjaTool?.count}</td></tr>`,
+          `<tr><th>効果</th><td>${escape(ninjaTool?.effect?.replaceAll('。', '。\n') || 'なし')}</td></tr>`,
+          '</table>'
+        ].join('')
+      })
+    }
+
     return {
+      isGm,
+      isOwn,
       isRawViewMode,
       reloadNinjaTool,
       addNinjaTool,
       ninjaToolListWrap,
       viewMode,
       onDelete,
-      onDrag
+      onDrag,
+      onUseTool,
+      presentList,
+      onSelectPresentTarget,
+      onViewContents
     }
   }
 })
@@ -195,7 +350,49 @@ export default defineComponent({
   gap: 0.5rem
 }
 
-h2:deep() {
+.h-box {
+  @include common.flex-box(row, flex-start, flex-start, wrap);
+  gap: 0.5rem;
+  padding: 0.2rem;
+}
+
+.ninja-tool-chip {
+  @include common.flex-box(column, stretch, flex-start);
+  font-size: var(--sheet-font-size);
+  box-shadow: rgba(0, 0, 0, 0.05) 0 6px 24px 0, rgba(0, 0, 0, 0.08) 0 0 0 1px;
+  border-radius: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+
+  .header {
+    @include common.flex-box(column, stretch, flex-start);
+    background-color: #252525;
+    position: relative;
+    color: white;
+    padding: 0.2rem 0.5rem;
+
+    .type {
+      text-align: right;
+    }
+
+    .name {
+      font-size: 1.4em;
+      font-weight: bold;
+      padding: 0.2rem 0;
+    }
+  }
+
+  > * {
+    white-space: nowrap;
+  }
+
+  button,
+  select {
+    margin: 0.2rem 0.5rem;
+  }
+}
+
+@include common.deep("h2") {
   &.normal {
     width: calc(var(--sheet-font-size) * (13 + 5 + 15) + 3px + 1px);
   }
@@ -203,11 +400,11 @@ h2:deep() {
     width: calc(var(--sheet-font-size) * (13 + 5) + 2px + 1px);
   }
   &.alt {
-    width: calc(var(--sheet-font-size) * (13 + 3 + 4) + 3px + 1px);
+    width: calc(var(--sheet-font-size) * (13 + 4 + 4) + 3px + 1px);
   }
 }
 
-.draggable-handle {
+td.draggable-handle {
   min-width: 3em;
   background-color: lightgray;
   background-image: radial-gradient(white 30%, transparent 30%);
@@ -296,20 +493,29 @@ table.ninja-tools {
   }
   .name {
     white-space: nowrap;
-    width: 13em;
+    @include set-width(13em);
   }
 
   .num {
-    width: 5em;
+    @include set-width(5em);
   }
 
   td.effect {
     text-align: left;
   }
 
+  .draggable-handle,
+  .delete-btn {
+    @include set-width(4em);
+
+    button {
+      width: 100%;
+    }
+  }
+
   .effect {
     white-space: break-spaces;
-    min-width: 15em;
+    @include set-width(15em);
 
     textarea {
       width: 100%;

@@ -240,6 +240,10 @@ export default defineComponent({
 .v-box {
   @include common.flex-box(column, flex-start, flex-start, wrap);
   gap: 0.5em;
+
+  @include common.deep("h2") {
+    margin-bottom: -0.5rem;
+  }
 }
 
 .h-box {

@@ -1,13 +1,13 @@
 <template>
   <view-mode
-    title="エニグマ"
+    :title="mode === 'detail' ? '' : 'エニグマ'"
     :use-simple="true"
     :normal-label="isGm ? '通常' : '詳細'"
     :simple-label="'簡易'"
     :alt-label="'入替/削除'"
     :editable="isGm && mode === 'scenario'"
     v-model:viewMode="viewMode"
-    :use-add="isGm"
+    :use-add="isGm && mode !== 'detail'"
     @add="onAdd()"
   />
   <draggable
@@ -66,7 +66,7 @@
                 <input
                   type="checkbox"
                   :id="`enigma-${element.idx}-open`"
-                  v-if="isGm && mode === 'scenario'"
+                  v-if="isGm && mode !== 'character'"
                   v-model="element.raw._open"
                   @change="onChangeOpen(element.idx, $event)"
                 >
@@ -79,7 +79,7 @@
                 <input
                   type="checkbox"
                   :id="`enigma-${element.idx}-disarm`"
-                  v-if="isGm && mode === 'scenario'"
+                  v-if="isGm && mode !== 'character'"
                   v-model="element.raw._disarm"
                   @change="onDisarm(element.idx, $event)"
                 >
@@ -153,7 +153,7 @@
                   placeholder="ゲーム中に表示される情報をこちらに記載してください。"
                 ></textarea>
                 <template v-else>
-                  <template v-if="isGm || element.raw._open">{{ element.raw._effect || '記載なし' }}</template>
+                  <template v-if="isGm || element.raw._open">{{ element.raw._effect || '解除方法／指定特技／バインドPC／効果の4項目はQuoripagos内で埋める必要があります。' }}</template>
                 </template>
               </td>
             </tr>
@@ -184,7 +184,7 @@ export default defineComponent({
   components: { ViewMode, draggable },
   props: {
     mode: {
-      type: String as PropType<'scenario' | 'character'>,
+      type: String as PropType<'scenario' | 'character' | 'detail'>,
       required: true
     },
     target: {
@@ -351,7 +351,7 @@ export default defineComponent({
   gap: 0.5em;
 }
 
-h2:deep() {
+@include common.deep("h2") {
   width: calc(var(--sheet-font-size) * 45);
 }
 

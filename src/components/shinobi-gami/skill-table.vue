@@ -9,7 +9,7 @@
               <option
                 v-if="d.raw._characterKey !== target"
                 :value="d.raw._characterKey"
-              >{{ d.raw.name }}（{{ d.character.sheetInfo.characterName }}）</option>
+              >PC {{ d.raw.name }} {{ d.character.sheetInfo.characterName }}</option>
             </template>
             <template v-for="d in npcListWrap" :key="d.raw._characterKey">
               <option
@@ -23,7 +23,7 @@
                   )
                 "
                 :value="d.raw._characterKey"
-              >{{ d.raw.name }}</option>
+              >NPC {{ d.raw.name }}</option>
             </template>
             <template v-for="d in rightHandListWrap" :key="d.raw._characterKey">
               <option
@@ -34,7 +34,7 @@
                   getChitStatus('right-hand', d.raw._characterKey).isSheetShow
                 )"
                 :value="d.raw._characterKey"
-              >{{ d.raw.name }}</option>
+              >腹心 {{ d.raw.name }}</option>
             </template>
           </select>
         </div>
@@ -105,7 +105,7 @@
               :style="{ '--value': `'>=${targetValueList.find(tv => tv.name === t).targetValue}'` }"
               @click="onClickTargetValue(targetValueList.find(tv => tv.name === t))"
             ></span>
-            <label @click="onClickSkillName(t)">{{ t }}</label>
+            <label class="skill-name" @click="onClickSkillName(t)" :id="mode !== 'normal' ? '': `${type}-detail-${target}-skill-${t}`">{{ t }}</label>
           </td>
         </template>
         <td class="row-num">{{ row + 2 }}</td>
@@ -284,6 +284,7 @@ export default defineComponent({
       }
     })
     const onClickTargetValue = (info: { name: string; targetValue: number; }) => {
+      if (props.mode === 'comparison') return
       specialInputState.setUseSkill(info.name)
       specialInputState.from.key = props.target
       specialInputState.setNinjaArts(targetNinjaArts.value)
@@ -316,7 +317,7 @@ export default defineComponent({
         selectedSkill.value = selectedSkill.value === name ? null : name
       }
       console.log(selectedSkill.value)
-      if (targetNinjaArts.value) emit('clear-arts')
+      emit('clear-arts')
     }
 
     const {
@@ -389,6 +390,7 @@ table.skill-table {
           border: 1px solid black;
           box-sizing: border-box;
           user-select: none;
+          background-color: rgba(255, 255, 255, 0.7);
 
           input {
             pointer-events: none;

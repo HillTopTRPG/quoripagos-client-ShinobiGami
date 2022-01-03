@@ -145,18 +145,40 @@ export async function loadJson<T>(path: string): Promise<T> {
   }
 }
 
-export async function getImageSize(path: string): Promise<Size | null> {
-  const loadImage = async (): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image()
-      img.onload = () => resolve(img)
-      img.onerror = e => reject(e)
-      img.src = path
-    })
+export async function loadImage(path: string | null | undefined): Promise<HTMLImageElement | null> {
+  return new Promise((resolve, reject) => {
+    if (!path) {
+      resolve(null)
+      return
+    }
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = e => reject(e)
+    img.src = path
+  })
+}
+
+export async function loadImageBase64(path: string | null | undefined): Promise<string | null> {
+  const image = await loadImage(path)
+  if (image) {
+    const cvs: HTMLCanvasElement = document.createElement('canvas')
+    const context = cvs.getContext('2d')
+    if (context) {
+      cvs.width = image.width || 0
+      cvs.height = image.height || 0
+      context.drawImage(image, 0, 0)
+      // base64 string
+      return cvs.toDataURL('image/png')
+    }
   }
+  return path || null
+}
+
+export async function getImageSize(path: string): Promise<Size | null> {
   try {
-    const res = await loadImage()
-    return createSize(res.width, res.height)
+    const res = await loadImage(path)
+    return createSize(res?.width || 0, res?.height || 0)
   } catch (e) {
     return null
   }

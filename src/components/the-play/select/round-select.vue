@@ -40,6 +40,12 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
+label {
+  margin: 0 0.5rem;
+}
+span {
+  font-size: 80%;
+}
 select {
   height: 2em;
 }

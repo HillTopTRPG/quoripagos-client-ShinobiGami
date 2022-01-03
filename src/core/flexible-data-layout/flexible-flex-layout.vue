@@ -109,6 +109,7 @@ export default defineComponent({
 .flexible-flex-layout {
   display: flex;
   overflow: auto;
+  //overscroll-behavior-y: contain;
 
   &.bar-top {
     padding-top: 0.25em;

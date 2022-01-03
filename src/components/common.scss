@@ -14,7 +14,7 @@ $dice-size: 10vmin;
   right: $offset;
 }
 
-@mixin deep($selecter) {
+@mixin deep($selecter: "") {
   :deep(#{ $selecter }) {
     @content;
   }

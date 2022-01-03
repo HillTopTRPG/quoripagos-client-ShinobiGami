@@ -1,7 +1,7 @@
 <template>
+  <img class="mascot-normal" v-if="mode === 'login'" src="https://quoridorn.com/img/mascot/normal/mascot_normal.png" alt="">
+  <img class="mascot-normal slide" v-if="isHideMascotView" src="https://quoridorn.com/img/mascot/normal/mascot_normal.png" alt="">
   <div id="screen-wrapper" :class="[mode, isHideMascotView ? 'animation' : '']">
-    <img class="mascot-normal" v-if="mode === 'login'" src="https://quoridorn.com/img/mascot/normal/mascot_normal.png" alt="">
-    <img class="mascot-normal slide" v-if="isHideMascotView" src="https://quoridorn.com/img/mascot/normal/mascot_normal.png" alt="">
     <transition name="the-login">
       <div id="the-login" :class="classObj" v-if="mode === 'login'">
         <div v-show="!roomList.length">サーバー通信中</div>
@@ -51,9 +51,13 @@
 
     <room-data-provider :modules="modules[0]" v-if="mode === 'play'">
       <room-data-sync-provider :modules="modules[0]">
-        <room-data-provider :modules="modules[1]" v-if="mode === 'play'">
+        <room-data-provider :modules="modules[1]">
           <room-data-sync-provider :modules="modules[1]">
-            <slot />
+            <room-data-provider :modules="modules[2]">
+              <room-data-sync-provider :modules="modules[2]">
+                <slot />
+              </room-data-sync-provider>
+            </room-data-provider>
           </room-data-sync-provider>
         </room-data-provider>
       </room-data-sync-provider>
@@ -126,40 +130,16 @@ export default defineComponent({
 @use "../../components/animations";
 @use "../../components/common";
 
-#screen-wrapper {
-  @include common.flex-box(row, space-between, stretch);
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 200vw;
-  transition-property: none;
-  transition-duration: animations.$play-slide-animation-duration;
-  transition-delay: animations.$play-slide-animation-delay;
-  transition-timing-function: linear;
-
-  &.animation {
-    transition-property: transform;
-  }
-
-  &.login {
-    transform: translateX(0);
-  }
-
-  &.play {
-    transform: translateX(-100vw);
-  }
-}
-
 .mascot-normal {
   position: absolute;
-  right: 100vw;
+  right: 0;
   bottom: 0;
   width: 40vmin;
   height: 40vmin;
   transform: translate(0, 0) rotate(-27deg);
   opacity: 0.5;
   z-index: 2;
+  pointer-events: none;
 
   &.slide {
     animation:
@@ -190,11 +170,9 @@ export default defineComponent({
   left: 0;
   width: 100vw;
   box-sizing: border-box;
-  bottom: 0;
+  height: calc(var(--vh, 1vh) * 100);
   z-index: 1;
   overflow-y: scroll;
-  border-right: 2px solid black;
-  border-left: 2px solid black;
 }
 
 @include common.deep(".title") {

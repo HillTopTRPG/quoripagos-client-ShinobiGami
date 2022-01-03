@@ -1,7 +1,8 @@
 import { reactive } from 'vue'
 import { makeStore, StoreUpdateProperties } from '@/core/utility/vue3'
 import { DataReference } from '@/core/data/user'
-import { Character, Store as CharacterStoreDefinition } from '@/feature/character/data'
+import CharacterStore, { Character } from '@/feature/character/data'
+import ScenarioStore from '@/feature/scenario/data'
 import { SkillTable } from '@/core/utility/shinobigami'
 import { calcTargetValue } from '@/core/utility/TrpgSystemFasade'
 
@@ -9,7 +10,6 @@ export type SpecialInputType = 'normal' | 'SG' | 'D6' | 'D6>=?'
 
 type Store = {
   ready: boolean;
-  characterState: CharacterStoreDefinition | null;
   cmdType: SpecialInputType;
   setCmdType: (cmdType: SpecialInputType) => void;
   /* { type: 'character', key: '[キャラクターキー]' }
@@ -40,9 +40,10 @@ type Store = {
 }
 
 export default makeStore<Store>('local-setting-store', () => {
+  const characterState = CharacterStore.injector()
+  const scenarioState = ScenarioStore.injector()
   const state = reactive<StoreUpdateProperties<Store, 'command'>>({
     ready: true,
-    characterState: null,
     cmdType: 'normal',
     from: {
       type: null,
@@ -80,7 +81,7 @@ export default makeStore<Store>('local-setting-store', () => {
     let text = ''
 
     // 指定特技が特技表に載っている忍法データを準備
-    const character = state.from.type === 'character' ? state.characterState?.characterList.find(c => c.key === state.from.key)?.data || null : null
+    const character = state.from.type === 'character' ? characterState.characterList.find(c => c.key === state.from.key)?.data || null : null
     const ninjaArts = character?.sheetInfo.ninjaArtsList.find(n => n.name === state.ninjaArts) || null
 
     if (character) {
@@ -111,8 +112,7 @@ export default makeStore<Store>('local-setting-store', () => {
     if (state.to) {
       const toKey = state.to.key
       if (state.to.type === 'character') {
-        const character = state.characterState?.characterList.find(c => c.key === toKey)
-        text += ` → ${character?.data?.sheetInfo.characterName || ''}`
+        text += ` → ${scenarioState.getAllList().find(d => d.key === toKey)?.name || ''}`
       } else {
         text += ` → ${toKey}`
       }
@@ -123,8 +123,6 @@ export default makeStore<Store>('local-setting-store', () => {
 
   return {
     get ready() { return state.ready },
-    get characterState() { return state.characterState },
-    set characterState(characterState) { state.characterState = characterState },
     get cmdType() { return state.cmdType },
     setCmdType(cmdType: SpecialInputType) {
       // 最後に設定すること
@@ -140,7 +138,7 @@ export default makeStore<Store>('local-setting-store', () => {
     get from() { return state.from },
     set from(from) {
       state.from = from
-      const character = state.from.type === 'character' ? state.characterState?.characterList.find(c => c.key === state.from.key)?.data || null : null
+      const character = state.from.type === 'character' ? characterState.characterList.find(c => c.key === state.from.key)?.data || null : null
       if (state.ninjaArts) {
         const ninjaArts = character?.sheetInfo.ninjaArtsList.find(n => n.name === state.ninjaArts) || null
         if (ninjaArts) {
@@ -167,14 +165,14 @@ export default makeStore<Store>('local-setting-store', () => {
     get targetSkill() { return state.targetSkill },
     setTargetSkill(targetSkill: string | null) {
       state.targetSkill = targetSkill
-      const character = state.from.type === 'character' ? state.characterState?.characterList.find(c => c.key === state.from.key)?.data || null : null
+      const character = state.from.type === 'character' ? characterState.characterList.find(c => c.key === state.from.key)?.data || null : null
       resetUseSkill(character)
       state.text = makeText()
     },
     get ninjaArts() { return state.ninjaArts },
     setNinjaArts(ninjaArts: string | null) {
       state.ninjaArts = ninjaArts
-      const character = state.from.type === 'character' ? state.characterState?.characterList.find(c => c.key === state.from.key)?.data || null : null
+      const character = state.from.type === 'character' ? characterState.characterList.find(c => c.key === state.from.key)?.data || null : null
       const ninjaArtsInfo = character?.sheetInfo.ninjaArtsList.find(n => n.name === state.ninjaArts) || null
       state.targetSkill = ninjaArtsInfo?.targetSkill || null
 

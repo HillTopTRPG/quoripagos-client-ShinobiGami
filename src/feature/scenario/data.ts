@@ -13,6 +13,7 @@ import CharacterStore, {
 import MediaStore, { getUrlTypes } from '@/feature/media-list/data'
 import { getFileName } from '@/core/utility/PrimaryDataUtility'
 import SocketStore from '@/core/data/socket'
+import UserStore from '@/core/data/user'
 import { ComputedRef, ToRef } from '@vue/reactivity'
 import { v4 as uuidV4 } from 'uuid'
 
@@ -60,7 +61,9 @@ type Store = {
     updateNpcListWrap: (target: string) => void;
     updateRightHandListWrap: (target: string) => void;
     updateEnigmaListWrap: (target: string) => void;
-  }
+  },
+  getSelfList: () => { name: string, key: string }[],
+  getAllList: () => { name: string, key: string }[]
 }
 
 export default makeStore<Store>('scenario-store', () => {
@@ -72,6 +75,7 @@ export default makeStore<Store>('scenario-store', () => {
 
   const characterState = CharacterStore.injector()
   const mediaState = MediaStore.injector()
+  const userState = UserStore.injector()
 
   const { requestData, insertData } = commonStoreDataProcess(
     state.list,
@@ -421,6 +425,42 @@ export default makeStore<Store>('scenario-store', () => {
     uploadCharacterImage,
     getChitStatus,
     requestData,
-    makeWrapLists
+    makeWrapLists,
+    getSelfList: (): { name: string, key: string }[] => {
+      const pcList = state.list[state.currentIndex]?.data?.sheetInfo.pc
+        .filter(p => userState.selfUser?.type === 'gm' || p._userKey === userState.selfUser?.key)
+        .map(p => ({
+          name: `PC ${p.name} ${characterState.characterList.find(c => c.key === p._characterKey)?.data?.sheetInfo.characterName || ''}`,
+          key: p._characterKey
+        })) || []
+      const npcList = userState.selfUser?.type === 'gm'
+        ? state.list[state.currentIndex]?.data?.sheetInfo.npc.map(p => ({
+          name: `NPC ${p.name}`,
+          key: p._characterKey
+        })) || []
+        : []
+      const rightHandList = userState.selfUser?.type === 'gm'
+        ? state.list[state.currentIndex]?.data?.sheetInfo.righthand.map(p => ({
+          name: `腹心 ${p.name}`,
+          key: p._characterKey
+        })) || []
+        : []
+      return pcList.concat(...npcList).concat(...rightHandList)
+    },
+    getAllList: (): { name: string, key: string }[] => {
+      const pcList = state.list[state.currentIndex]?.data?.sheetInfo.pc.map(p => ({
+        name: `PC ${p.name} ${characterState.characterList.find(c => c.key === p._characterKey)?.data?.sheetInfo.characterName || ''}`,
+        key: p._characterKey
+      })) || []
+      const npcList = state.list[state.currentIndex]?.data?.sheetInfo.npc.map(p => ({
+        name: `NPC ${p.name}`,
+        key: p._characterKey
+      })) || []
+      const rightHandList = state.list[state.currentIndex]?.data?.sheetInfo.righthand.map(p => ({
+        name: `腹心 ${p.name}`,
+        key: p._characterKey
+      })) || []
+      return pcList.concat(...npcList).concat(...rightHandList)
+    }
   }
 })

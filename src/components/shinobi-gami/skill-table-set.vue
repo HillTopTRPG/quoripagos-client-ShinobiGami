@@ -11,6 +11,7 @@
     <skill-table
       :type="type"
       :target="target"
+      @clearArts="onClearArts()"
       mode="comparison"
       v-model:other-character-key="otherCharaKey"
       v-model:target-skill="targetSkillRaw"
