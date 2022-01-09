@@ -10,7 +10,7 @@
           <button class="room-btn" type="button" @click="deleteRoom(r.roomNo)" v-show="r.roomNo !== selectedRoomNo">削除</button>
           {{ r.detail.roomName }}
           <template v-if="r.roomNo === selectedRoomNo">
-            <button class="un-select-btn" type="button" @click="unSelectRoom()">選択解除</button>
+            <button class="un-select-btn" type="button" @click="isRoomLogined = false;unSelectRoom()">選択解除</button>
           </template>
         </template>
         <template v-else-if="r.status === 'initial-touched'">
@@ -56,7 +56,7 @@
               name="room-password"
               @focus="onFocus($event)"
             >
-            <button class="room-btn" type="button" @click="loginRoom(r.roomNo, roomPassword)">確認</button>
+            <button :disabled="isRoomLogined" class="room-btn" type="button" @click="isRoomLogined = true;loginRoom(r.roomNo, roomPassword)">確認</button>
           </template>
           <template v-else>
             <input
@@ -83,7 +83,7 @@
               name="password"
               @focus="onFocus($event)"
             >
-            <button type="button" @click="loginUser(userName, userType, userPassword)" :disabled="!userName">ユーザログイン</button>
+            <button :disabled="!userName || isUserLogined" type="button" @click="isUserLogined = true;onLoginUser(userName, userType, userPassword)">ユーザログイン</button>
             <select ref="userTypeSelectElm" v-model="userType">
               <option value="pl">プレイヤー</option>
               <option value="gm">ゲームマスター</option>
@@ -131,6 +131,9 @@ export default defineComponent({
     const updateDateTimeFormat = ref('pattern-1')
     const showDeleteMessage = ref(false)
 
+    const isRoomLogined = ref(false)
+    const isUserLogined = ref(false)
+
     const formatStr = (dateTime: number | null): string => {
       if (dateTime === null) return 'pattern-2'
       const today = new Date()
@@ -162,6 +165,7 @@ export default defineComponent({
       if (userState.selectedRoomNo !== props.r.roomNo) return
       const type = userState.lastRoomLoginType
       if (type === '') {
+        isRoomLogined.value = false
         setTimeout(() => {
           userTypeSelectElm.value?.focus()
           setTimeout(() => {
@@ -196,6 +200,8 @@ export default defineComponent({
       userType,
       userPassword,
       showDeleteMessage,
+      isRoomLogined,
+      isUserLogined,
       selectUser: (userNameVal: string, userTypeVal: UserType) => {
         userName.value = userNameVal
         userType.value = userTypeVal
@@ -212,6 +218,13 @@ export default defineComponent({
         setTimeout(() => {
           event.target.scrollIntoView({ block: 'center' })
         }, 100)
+      },
+      onLoginUser: async (userName: string, userType: UserType, userPassword: string): Promise<void> => {
+        try {
+          await userState.loginUser(userName, userType, userPassword)
+        } catch (e) {
+          isUserLogined.value = false
+        }
       }
     }
   }
