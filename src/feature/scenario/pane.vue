@@ -104,6 +104,10 @@ export default defineComponent({
           pc._secretOpenList = []
           pc._placementOpenList = []
           pc._userKey = ''
+          pc.prePlot1 = -2
+          pc.prePlot2 = -2
+          pc.isUsePrePlot2 = false
+          pc.prePlotIsReady = 'none'
           pc.plot = -2
           pc.isFumble = false
           pc.isActed = false
@@ -131,6 +135,10 @@ export default defineComponent({
           npc._placementOpenList = []
           npc._hasSheet = false
           npc._sheetOpenList = []
+          npc.prePlot1 = -2
+          npc.prePlot2 = -2
+          npc.isUsePrePlot2 = false
+          npc.prePlotIsReady = 'none'
           npc.plot = -2
           npc.isFumble = false
           npc.isActed = false
@@ -157,6 +165,10 @@ export default defineComponent({
           rightHand._secretCheck = false
           rightHand._hasSheet = false
           rightHand._sheetOpenList = []
+          rightHand.prePlot1 = -2
+          rightHand.prePlot2 = -2
+          rightHand.isUsePrePlot2 = false
+          rightHand.prePlotIsReady = 'none'
           rightHand.plot = -2
           rightHand.isFumble = false
           rightHand.isActed = false

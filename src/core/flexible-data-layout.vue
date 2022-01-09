@@ -145,8 +145,8 @@ export function updateBarList(
           }
           if (data.layout === 'h-box') {
             layout.left = (side === 'after' ? rect.right : rect.left) + 'px'
-            layout.top = rect.y + 'px'
-            layout.height = rect.height + 'px'
+            layout.top = rect.y - 2 + 'px'
+            layout.height = rect.height + 2 + 'px'
           }
           if (ignoreUpdateKey === block.key) return
           const index = barInfoList.findIndex(r => r.blockKey === block.key)
@@ -272,11 +272,21 @@ export default defineComponent({
         // 初回の配置によって起きるズレのために再配置することでズレを解消
         setTimeout(() => {
           updateBarList(props.definition, barList)
-        })
+        }, 500)
 
         if (barList.length) {
           window.addEventListener('resize', () => {
-            updateBarList(props.definition, barList)
+            setTimeout(() => updateBarList(props.definition, barList), 0)
+            setTimeout(() => updateBarList(props.definition, barList), 200)
+            setTimeout(() => updateBarList(props.definition, barList), 400)
+            setTimeout(() => updateBarList(props.definition, barList), 600)
+            setTimeout(() => updateBarList(props.definition, barList), 800)
+            setTimeout(() => updateBarList(props.definition, barList), 1000)
+            setTimeout(() => updateBarList(props.definition, barList), 1200)
+            setTimeout(() => updateBarList(props.definition, barList), 1400)
+            setTimeout(() => updateBarList(props.definition, barList), 1600)
+            setTimeout(() => updateBarList(props.definition, barList), 1800)
+            setTimeout(() => updateBarList(props.definition, barList), 2000)
           })
         }
       }, props.barSetDelay)
@@ -304,9 +314,8 @@ export default defineComponent({
         if (block.minWidth && block.minWidth.px !== undefined) block.minWidth.px = oldBlockSize.w + ratio * diffX
         if (block.maxWidth && block.maxWidth.px !== undefined) block.maxWidth.px = oldBlockSize.w + ratio * diffX
       }
-      setTimeout(() => {
-        updateBarList(props.definition, barList, block.key)
-      })
+      // setTimeout(() => updateBarList(props.definition, barList, block.key), 0)
+      setTimeout(() => updateBarList(props.definition, barList), 0)
     }
     const intervalKey = ref<number | null>(null)
 

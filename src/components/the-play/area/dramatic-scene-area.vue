@@ -6,7 +6,7 @@
         label="PC"
         :target="c._characterKey"
         :view-name="false"
-        v-if="c.plot === -1"
+        v-if="c.plot === -1 && (isPrePlot === 'none' || isPrePlot === 'selecting' || isPrePlot === 'finished')"
       />
     </transition>
   </template>
@@ -17,7 +17,7 @@
         label="NPC"
         :target="n._characterKey"
         :view-name="false"
-        v-if="n.plot === -1 && !n.secretcheck"
+        v-if="n.plot === -1 && !n.secretcheck && (isPrePlot === 'none' || isPrePlot === 'selecting' || isPrePlot === 'finished')"
       />
     </transition>
   </template>
@@ -28,7 +28,7 @@
         label="腹心"
         :target="r._characterKey"
         :view-name="false"
-        v-if="r.plot === -1 && !r._secretCheck"
+        v-if="r.plot === -1 && !r._secretCheck && (isPrePlot === 'none' || isPrePlot === 'selecting' || isPrePlot === 'finished')"
       />
     </transition>
   </template>
@@ -40,12 +40,15 @@ import CharacterStore from '@/feature/character/data'
 import ScenarioStore from '@/feature/scenario/data'
 import UserStore from '@/core/data/user'
 import CharacterChitName from '@/feature/character/character-chit-name.vue'
+import RoomSettingStore from '@/feature/room-setting/data'
 
 export default defineComponent({
   name: 'dramatic-scene-area',
   components: { CharacterChitName },
   setup() {
     const characterState = CharacterStore.injector()
+    const roomSettingState = RoomSettingStore.injector()
+    const isPrePlot = computed(() => roomSettingState.roomSetting?.isPrePlot)
 
     const scenarioState = ScenarioStore.injector()
     const pcList = computed(() => scenarioState.currentScenario.sheetInfo.pc)
@@ -59,7 +62,8 @@ export default defineComponent({
       pcList,
       npcList,
       rightHandList,
-      isGm
+      isGm,
+      isPrePlot
     }
   }
 })

@@ -70,6 +70,7 @@ export default makeStore<Store>('character-store', () => {
 
   const setup = async (): Promise<void> => {
     await requestData()
+    console.log('character store isReady')
     state.ready = true
   }
   setup().then()

@@ -29,6 +29,7 @@ export default makeStore<Store>('persona-store', () => {
 
   const setup = async (): Promise<void> => {
     await requestData()
+    console.log('persona store isReady')
     state.ready = true
   }
   setup().then()

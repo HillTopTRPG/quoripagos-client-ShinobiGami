@@ -122,6 +122,16 @@ export async function successDialog(obj: {
   })
 }
 
+export async function infoDialog(obj: {
+  title: string;
+  text: string;
+}): Promise<void> {
+  await simpleDialog({
+    ...obj,
+    icon: 'info'
+  })
+}
+
 export async function questionDialog(obj: {
   title: string;
   text?: string;

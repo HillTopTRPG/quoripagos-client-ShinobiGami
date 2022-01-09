@@ -35,8 +35,47 @@ export default makeStore<Store>('scene-store', () => {
   )
 
   const setup = async (): Promise<void> => {
+    console.log('scene store setup')
+    const getCurrentScene = (): Scene | null => state.list.find(s => s.key === roomSettingState.roomSetting?.sceneKey)?.data || null
+
     await requestData()
-    state.ready = true
+    if (getCurrentScene()) {
+      console.log('scene store isReady')
+      state.ready = true
+      return
+    }
+
+    const keyList = await insertData({
+      data: {
+        name: '通常',
+        backgroundImage: null
+      }
+    })
+
+    const key: string = keyList[0]
+
+    console.log('uryyyyyyyyy')
+    console.log(key)
+    console.log(roomSettingState.roomSetting)
+    if (roomSettingState.roomSetting) {
+      console.log('set key!!!')
+      roomSettingState.roomSetting.sceneKey = key
+    }
+
+    let intervalId: number | null = null
+    return new Promise((resolve) => {
+      intervalId = window.setInterval(() => {
+        console.log(state.list[0]?.key === roomSettingState.roomSetting?.sceneKey, state.list[0]?.key, state.list[0]?.data?.name, roomSettingState.roomSetting?.sceneKey)
+        if (getCurrentScene()) {
+          if (intervalId !== null) {
+            window.clearInterval(intervalId)
+            intervalId = null
+            state.ready = true
+            resolve()
+          }
+        }
+      }, 50)
+    })
   }
   setup().then()
 

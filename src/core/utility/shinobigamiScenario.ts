@@ -1,6 +1,11 @@
 import { getJsonByGet, getJsonByJsonp } from '@/core/utility/Utility'
 
+export type PrePlotIsReady = 'none' | 'select' | 'finished';
 export type VelocityChitBase = {
+  prePlot1: number;
+  prePlot2: number;
+  isUsePrePlot2: boolean;
+  prePlotIsReady: PrePlotIsReady;
   plot: number;
   isFumble: boolean;
   isActed: boolean;

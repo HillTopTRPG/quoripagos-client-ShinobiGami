@@ -236,7 +236,8 @@ export default defineComponent({
         fromType: props.type,
         from: props.target,
         diceRollResult: null,
-        rands: null
+        rands: null,
+        secret: 'none'
       })
     }
     const onSelectArts = (index: number) => {
@@ -358,7 +359,7 @@ export default defineComponent({
 .ninja-arts-chip {
   @include common.flex-box(column, stretch, flex-start);
   font-size: var(--sheet-font-size);
-  box-shadow: rgba(0, 0, 0, 0.05) 0 6px 24px 0, rgba(0, 0, 0, 0.08) 0 0 0 1px;
+  box-shadow: rgba(0, 0, 0, 0.05) 0 6px 10px 0, rgba(0, 0, 0, 0.08) 0 0 0 1px;
   border-radius: 0.5rem;
   background-color: rgba(255, 255, 255, 0.7);
   overflow: hidden;

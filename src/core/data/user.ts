@@ -81,8 +81,8 @@ export default makeStore<Store>('user-store', () => {
       console.error(err)
       return
     }
-    console.log('notify-user-update')
-    console.log(JSON.stringify(payload, null, '  '))
+    // console.log('notify-user-update')
+    // console.log(JSON.stringify(payload, null, '  '))
     const index = state.userList.findIndex(r => r.key === payload.key)
     if (index < 0) {
       state.userList.push(payload)

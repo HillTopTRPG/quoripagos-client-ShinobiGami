@@ -49,7 +49,7 @@ export default defineComponent({
     // menuItemList.push({ label: 'ローカル設定', type: 'local-setting', isUnique: true })
     menuItemList.push({ label: 'ユーザー設定', type: 'user-setting', isUnique: true })
     if (userType === 'gm') {
-      menuItemList.push({ label: 'シーン', type: 'scene', isUnique: true })
+      menuItemList.push({ label: 'シーン(GMのみ編集可)', type: 'scene', isUnique: true })
       // menuItemList.push({ label: '共有メモ', type: 'memo', isUnique: false })
       // menuItemList.push({ label: 'タグ', type: 'tag', isUnique: false })
       // menuItemList.push({ label: '戦場表', type: 'battle-field', isUnique: false })
@@ -154,12 +154,13 @@ export default defineComponent({
     background: #000;
     position: absolute;
     left: 25%;
-    transition: 0.3s;
+    transition: 0.25s;
     transition-property: width, transform;
+    z-index: 11;
 
     &:nth-of-type(1) {
-      transform-origin: left bottom;
       top: 23%;
+      transform-origin: left bottom;
     }
     &:nth-of-type(2) {
       top: 45%;

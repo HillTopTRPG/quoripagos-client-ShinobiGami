@@ -200,7 +200,8 @@ export function commonStoreDataProcess<T, U extends keyof T>(
           share: 'room',
           force: true,
           list
-        }
+        },
+        `db-api-insert-${collectionName}`
       ),
     deleteData: async (keys: string[]): Promise<void> =>
       socketStore.sendSocketServerRoundTripRequest<DeleteDataRequest, void>(

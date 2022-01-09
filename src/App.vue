@@ -43,7 +43,6 @@ body {
   padding: 0;
   text-rendering: optimizeSpeed;
   font-feature-settings: "palt" 1;
-  overflow-y: scroll;
   height: calc(var(--vh, 1vh) * 100);
 }
 
@@ -117,6 +116,7 @@ body {
 
 button {
   font-size: inherit;
+  white-space: nowrap;
 
   &:not(:disabled) {
     cursor: pointer;

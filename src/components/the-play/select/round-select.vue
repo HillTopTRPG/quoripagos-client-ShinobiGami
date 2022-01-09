@@ -40,9 +40,6 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
-label {
-  margin: 0 0.5rem;
-}
 span {
   font-size: 80%;
 }

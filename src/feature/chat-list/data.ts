@@ -29,6 +29,7 @@ export type ChatStore = {
   fromType: 'user' | 'pc' | 'npc' | 'right-hand';
   diceRollResult: string | null;
   rands: DiceResult[] | null;
+  secret: 'none' | 'secret' | 'opened';
 };
 
 type Store = {
@@ -56,12 +57,14 @@ export default makeStore<Store>('chat-list-store', () => {
       'from',
       'fromType',
       'diceRollResult',
-      'rands'
+      'rands',
+      'secret'
     ]
   )
 
   const setup = async (): Promise<void> => {
     await requestData()
+    console.log('chat-list store isReady')
     state.ready = true
   }
   setup().then()

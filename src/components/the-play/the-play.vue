@@ -6,8 +6,9 @@
       <div
         class="history-block"
         @click="onEndDiceRoll()"
-        :style="{'--bottom': bottomHeight}" v-if="chatHistoryList.length"
-        :class="[chatHistoryList[0].viewTextInfo.isMe ? 'image-left' : 'image-right']"
+        :style="{'--bottom': bottomHeight}"
+        v-if="chatHistoryList.length"
+        :class="[chatHistoryList[0]?.viewTextInfo.isMe ? 'image-left' : 'image-right']"
       >
         <div
           class="view-text first"
@@ -16,22 +17,31 @@
           v-if="chatHistoryList[0].viewTextInfo"
         >
           <span class="from-label">{{ getFromLabel(chatHistoryList[0].viewTextInfo || null) }}</span>
-          <span class="chat-text">{{ chatHistoryList[0].viewTextInfo?.text }}</span>
-          <div class="dice-result">
+          <template v-if="chatHistoryList[0].viewTextInfo?.secret === 'secret' && chatHistoryList[0].owner !== selfUserRef?.key">
+            シークレットダイスロール
+          </template>
+          <span class="chat-text" v-else>{{ chatHistoryList[0].viewTextInfo?.text }}</span>
+          <div
+            class="dice-result"
+            v-if="chatHistoryList[0].viewTextInfo?.secret !== 'secret' || chatHistoryList[0].owner === selfUserRef?.key"
+          >
+            <span v-if="chatHistoryList[0].viewTextInfo"></span>
             <span class="dice-roll-result" v-if="chatHistoryList[0].viewTextInfo?.diceRollResult">{{ chatHistoryList[0].viewTextInfo?.diceRollResult }}</span>
             <span>{{ chatHistoryList[0].viewTextInfo?.diceText }}</span>
           </div>
         </div>
         <div class="img" :style="{ '--image': chatHistoryList[0].viewTextInfo.standImage }" :class="!chatHistoryList[0].viewTextInfo.standImage ? 'non-image' : ''">
-          <div
-            v-for="(pip, idx) in chatHistoryList[0].pips"
-            :key="`${chatHistoryList[0].key}-${idx}`"
-            class="dice-wrap roll"
-            :class="`${pip[0]}-${pip[1]}`"
-            :style="{...getChatStyle(chatHistoryList[0].viewTextInfo, 2), '--offset': idx, '--dice-count': chatHistoryList[0].pips.length}"
-          >
-            <div class="dice"></div>
-          </div>
+          <template v-if="chatHistoryList[0].viewTextInfo?.secret !== 'secret' || chatHistoryList[0].owner === selfUserRef.key">
+            <div
+              v-for="(pip, idx) in chatHistoryList[0].pips"
+              :key="`${chatHistoryList[0].key}-${idx}`"
+              class="dice-wrap roll"
+              :class="`${pip[0]}-${pip[1]}`"
+              :style="{...getChatStyle(chatHistoryList[0].viewTextInfo, 2), '--offset': idx, '--dice-count': chatHistoryList[0].pips.length}"
+            >
+              <div class="dice"></div>
+            </div>
+          </template>
         </div>
         <div class="history">
           <template v-for="(h, idx) in chatHistoryList" :key="h.key">
@@ -42,8 +52,14 @@
               v-if="h.viewTextInfo && idx > 0"
             >
               <span class="from-label">{{ getFromLabel(h.viewTextInfo || null) }}</span>
-              <span class="chat-text">{{ h.viewTextInfo?.text }}</span>
-              <div class="dice-result">
+              <template v-if="chatHistoryList[0].viewTextInfo?.secret === 'secret' && chatHistoryList[0].owner !== selfUserRef?.key">
+                シークレットダイスロール
+              </template>
+              <span class="chat-text" v-else>{{ h.viewTextInfo?.text }}</span>
+              <div
+                class="dice-result"
+                v-if="h.viewTextInfo?.secret !== 'secret' || chatHistoryList[0].owner === selfUserRef?.key"
+              >
                 <span class="dice-roll-result" v-if="h.viewTextInfo?.diceRollResult">{{ h.viewTextInfo?.diceRollResult }}</span>
                 <span>{{ h.viewTextInfo?.diceText }}</span>
               </div>
@@ -56,11 +72,28 @@
           <div class="chat" :style="getChatStyle(c.data, 0)">
             <span class="from-label">
               <span>{{ getFromLabel(c.data || null) }}</span>
-              <i18n-d tag="span" :value="new Date(c.createDateTime)" :format="getTimeFormat(c.createDateTime)"></i18n-d>
+              <i18n-d
+                tag="span"
+                :value="new Date(c.createDateTime)"
+                :format="getTimeFormat(c.createDateTime)"
+              ></i18n-d>
             </span>
-            <span class="chat-text">{{ c.data?.raw }}</span>
+            <template v-if="c.data?.secret === 'secret' && c.owner !== selfUserRef?.key">
+              シークレットダイスロール
+            </template>
+            <span v-else class="chat-text">
+              {{ c.data?.raw }}
+              <button @click="openSecretDiceRoll(c.key)" v-if="c.data?.secret === 'secret'">公開</button>
+            </span>
+            <template v-if="c.data?.secret === 'opened'">
+              [公開済]
+            </template>
           </div>
-          <div class="chat dice-result" :style="getChatStyle(c.data, 0)" v-if="c.data?.diceRaw">
+          <div
+            class="chat dice-result"
+            :style="getChatStyle(c.data, 0)"
+            v-if="c.data?.diceRaw && (c.data?.secret !== 'secret' || c.owner === selfUserRef?.key)"
+          >
             <span class="dice-roll-result" v-if="c.data?.diceRollResult">{{ c.data?.diceRollResult }}</span>
             {{ c.data?.diceRaw }}
           </div>
@@ -249,7 +282,8 @@ export default defineComponent({
             fromType: fromType || 'user',
             from: fromKey || '',
             diceRollResult: bcdiceResult ? diceResult || null : null,
-            rands: bcdiceResult?.rands || null
+            rands: bcdiceResult?.rands || null,
+            secret: bcdiceResult?.secret ? 'secret' : 'none'
           })
         }
       }
@@ -259,6 +293,7 @@ export default defineComponent({
 
     const chatHistoryList = ref<{
       key: string;
+      owner: string;
       viewTextInfo: {
         type: 'chat' | 'system';
         fromType: 'user' | 'pc' | 'npc' | 'right-hand';
@@ -267,6 +302,7 @@ export default defineComponent({
         diceText: string | null;
         diceRollResult: string | null;
         color: string;
+        secret: 'none' | 'secret' | 'opened';
         standImage: string | null;
         isMe: boolean;
       };
@@ -368,25 +404,36 @@ export default defineComponent({
       return `${fromLabel || '???'}${chat.type === 'system' ? '(System)' : ''}`
     }
 
-    const randsToPips = (chat: ChatStore, key: string): Promise<void> => {
-      return new Promise<void>(resolve => {
-        const style = getChatStyle(chat, -1)
-        const pc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(d => d._characterKey === chat.from)
-        const npc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(d => d._characterKey === chat.from)
-        const rightHand = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(d => d._characterKey === chat.from)
-        const standImageList = pc?.standImageList || npc?.standImageList || rightHand?.standImageList
-        const currentStandImage = (pc?.currentStandImage !== undefined && pc?.currentStandImage) ||
-          (npc?.currentStandImage !== undefined && npc?.currentStandImage) ||
-          (rightHand?.currentStandImage !== undefined && rightHand?.currentStandImage)
-        const standImageKey = standImageList && standImageList.length > currentStandImage ? standImageList[currentStandImage || 0] : null
-        const standImageUrl = mediaListState.list.find(n => n.key === standImageKey)?.data?.url || null
+    const randsToPips = (chat: ChatStore, key: string, owner: string): void => {
+      const style = getChatStyle(chat, -1)
+      const pc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(d => d._characterKey === chat.from)
+      const npc = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(d => d._characterKey === chat.from)
+      const rightHand = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(d => d._characterKey === chat.from)
+      const standImageList = pc?.standImageList || npc?.standImageList || rightHand?.standImageList
+      const currentStandImage = (pc?.currentStandImage !== undefined && pc?.currentStandImage) ||
+        (npc?.currentStandImage !== undefined && npc?.currentStandImage) ||
+        (rightHand?.currentStandImage !== undefined && rightHand?.currentStandImage)
+      const standImageKey = standImageList && standImageList.length > currentStandImage ? standImageList[currentStandImage || 0] : null
+      const standImageUrl = mediaListState.list.find(n => n.key === standImageKey)?.data?.url || null
 
-        console.log(chat.raw, style['--color'] || '#000')
+      let isMe = false
+      if (pc?._userKey === selfUserRef.value?.key) isMe = true
+      if ((npc || rightHand) && selfUserRef.value?.type === 'gm') isMe = true
+      if (!pc && !npc && !rightHand && selfUserRef.value?.key === chat.from) isMe = true
 
-        const isMe = (pc && pc._userKey === selfUserRef.value?.key) || (!pc && selfUserRef.value?.type === 'gm')
+      chatHistoryList.value
+        .filter(ch => ch.viewTextInfo.secret === 'secret')
+        .forEach(ch => {
+          const chat = chatListState.list.find(c => c.key === ch.key)
+          if (chat?.data?.secret !== 'secret') {
+            ch.viewTextInfo.secret = chat?.data?.secret || 'secret'
+          }
+        })
 
+      if (key !== chatHistoryList.value[0]?.key) {
         chatHistoryList.value.unshift({
           key,
+          owner,
           viewTextInfo: {
             type: chat.type,
             fromType: chat.fromType,
@@ -395,6 +442,7 @@ export default defineComponent({
             diceText: chat.diceRaw,
             diceRollResult: chat.diceRollResult,
             color: style['--color'] || '#000',
+            secret: chat.secret,
             standImage: standImageUrl ? `url('${standImageUrl}')` : null,
             isMe
           },
@@ -406,12 +454,11 @@ export default defineComponent({
             })
             .filter((r): r is [string, number] => r !== null) || []
         })
-        diceRollEnd.value = () => {
-          diceRollEnd.value = null
-          chatHistoryList.value = []
-          resolve()
-        }
-      })
+      }
+      diceRollEnd.value = () => {
+        diceRollEnd.value = null
+        chatHistoryList.value = []
+      }
     }
 
     const onChangeMode = (m: 'normal' | 'SG' | 'D6' | 'D6>=?') => {
@@ -420,6 +467,13 @@ export default defineComponent({
         key: from.value
       }
       specialInputState.setCmdType(m)
+    }
+
+    const openSecretDiceRoll = (chatKey: string) => {
+      const chat = chatListState.list.find(c => c.key === chatKey)
+      if (chat && chat.data) {
+        chat.data.secret = 'opened'
+      }
     }
 
     const onDiceCommand = async () => {
@@ -432,17 +486,15 @@ export default defineComponent({
     }
 
     const chatList = computed(() => chatListState.list)
-    watch(() => [...chatList.value], (newList, oldList) => {
-      if (newList.length > oldList.length) {
-        setTimeout(() => {
-          chatBottomElm.value?.scrollIntoView(false)
-        })
-        const chat = newList[newList.length - 1]
-        if (chat && chat.data) {
-          randsToPips(chat.data, chat.key).then()
-        }
+    watch(() => [...chatList.value], newList => {
+      setTimeout(() => {
+        chatBottomElm.value?.scrollIntoView(false)
+      })
+      const chat = newList[newList.length - 1]
+      if (chat && chat.data) {
+        randsToPips(chat.data, chat.key, chat.owner || '')
       }
-    })
+    }, { deep: true })
 
     const battleField = computed(() => roomSettingState.roomSetting?.battleField)
     const isMobile = computed(() => Boolean(navigator.userAgent.match(/Mobile/)))
@@ -521,7 +573,8 @@ export default defineComponent({
       battleField,
       sendMessage,
       getTimeFormat,
-      isMobile
+      isMobile,
+      openSecretDiceRoll
     }
   },
   name: 'the-play'
@@ -718,6 +771,10 @@ export default defineComponent({
     background-size: contain;
     pointer-events: all;
     cursor: pointer;
+
+    &.non-image {
+      pointer-events: none;
+    }
   }
 }
 
@@ -812,12 +869,17 @@ textarea {
 }
 
 @include common.deep(".top-box") {
+  background-color: common.$menu-back-color;
+  border-bottom: 1px solid #495478;
   padding-left: calc(#{common.$header-height} + 0.5rem);
+  box-sizing: border-box;
   align-items: center;
+  z-index: 30001;
   gap: 0.5rem;
 }
 
 @include common.deep(".right-box") {
+  position: relative;
   scroll-behavior: smooth;
   white-space: pre-wrap;
   text-align: left;
@@ -838,17 +900,18 @@ textarea {
   }
 }
 
-@include common.deep(".top-box") {
-  background-color: common.$menu-back-color;
-  border-bottom: 1px solid #495478;
-}
-
 @include common.deep(".simple-center") {
   gap: 0.5rem;
 }
 
 @include common.deep(".left-box") {
   gap: 1rem;
+  overscroll-behavior: none;
+}
+
+@include common.deep("#section-root") {
+  position: relative;
+  z-index: 1;
 }
 
 @include common.deep(".dramatic-scene") {

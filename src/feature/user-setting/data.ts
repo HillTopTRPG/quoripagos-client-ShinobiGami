@@ -47,6 +47,7 @@ export default makeStore<Store>('user-setting-store', () => {
 
     await requestData()
     if (getUserSetting()) {
+      console.log('user-setting store isReady')
       state.ready = true
       return
     }

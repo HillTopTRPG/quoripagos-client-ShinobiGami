@@ -13,7 +13,8 @@
             label="PC"
             :target="p._characterKey"
             :view-name="false"
-            v-if="p.plot === idx && !p.isFumble"
+            v-if="!p.isFumble && ((isPrePlot === 'none' && p.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (p.prePlot1 === idx || p.prePlot2 === idx)))"
+            :plot="idx"
           />
         </transition>
       </template>
@@ -24,32 +25,59 @@
             label="NPC"
             :target="n._characterKey"
             :view-name="false"
-            v-if="n.plot === idx && !n.secretcheck && !n.isFumble"
+            v-if="!n.isFumble && !n.secretcheck && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
+            :plot="idx"
+          />
+        </transition>
+      </template>
+      <template v-for="n in rightHandList" :key="n._characterKey">
+        <transition name="character-fade">
+          <character-chit-name
+            type="right-hand"
+            label="腹心"
+            :target="n._characterKey"
+            :view-name="false"
+            v-if="!n.isFumble && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
+            :plot="idx"
           />
         </transition>
       </template>
       <span class="n">{{ idx }}</span>
     </div>
     <div class="fumble">
-      <template v-for="c in pcList" :key="c._characterKey">
+      <template v-for="p in pcList" :key="`${p._characterKey}-fumble`">
         <transition name="character-fade">
           <character-chit-name
             type="pc"
             label="PC"
-            :target="c._characterKey"
+            :target="p._characterKey"
             :view-name="false"
-            v-if="c.plot === idx && c.isFumble"
+            v-if="p.isFumble && ((isPrePlot=== 'none' && p.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (p.prePlot1 === idx || p.prePlot2 === idx)))"
+            :plot="idx"
           />
         </transition>
       </template>
-      <template v-for="(n, npcIdx) in npcList" :key="`${npcIdx}-${n.name}`">
+      <template v-for="n in npcList" :key="`${n._characterKey}-fumble`">
         <transition name="character-fade">
           <character-chit-name
             type="npc"
             label="NPC"
             :target="n._characterKey"
             :view-name="false"
-            v-if="n.plot === idx && !n.secretcheck && n.isFumble"
+            v-if="n.isFumble && !n.secretcheck && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
+            :plot="idx"
+          />
+        </transition>
+      </template>
+      <template v-for="n in rightHandList" :key="`${n._characterKey}-fumble`">
+        <transition name="character-fade">
+          <character-chit-name
+            type="right-hand"
+            label="腹心"
+            :target="n._characterKey"
+            :view-name="false"
+            v-if="n.isFumble && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
+            :plot="idx"
           />
         </transition>
       </template>
@@ -63,6 +91,7 @@ import CharacterStore from '@/feature/character/data'
 import ScenarioStore from '@/feature/scenario/data'
 import UserStore from '@/core/data/user'
 import CharacterChitName from '@/feature/character/character-chit-name.vue'
+import RoomSettingStore from '@/feature/room-setting/data'
 
 type VelocityColumn = { k: string; a: string; e: string }
 type Velocity = VelocityColumn[]
@@ -73,6 +102,7 @@ export default defineComponent({
   emits: ['update:modelValue'],
   setup() {
     const characterState = CharacterStore.injector()
+
     const velocity = reactive<Velocity>([
       { k: '零', a: '静止した時間', e: 'Mundain' },
       { k: '壱', a: '幽霊歩き', e: 'Ghost Walk' },
@@ -85,8 +115,13 @@ export default defineComponent({
     ])
 
     const scenarioState = ScenarioStore.injector()
+    const roomSettingState = RoomSettingStore.injector()
+
+    const isPrePlot = computed(() => roomSettingState.roomSetting?.isPrePlot)
+
     const pcList = computed(() => scenarioState.currentScenario.sheetInfo.pc)
     const npcList = computed(() => scenarioState.currentScenario.sheetInfo.npc)
+    const rightHandList = computed(() => scenarioState.currentScenario.sheetInfo.righthand)
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')
 
@@ -95,7 +130,9 @@ export default defineComponent({
       velocity,
       pcList,
       npcList,
-      isGm
+      rightHandList,
+      isGm,
+      isPrePlot
     }
   }
 })

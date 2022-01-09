@@ -29,6 +29,7 @@ export default makeStore<Store>('tag-store', () => {
 
   const setup = async (): Promise<void> => {
     await requestData()
+    console.log('tag store isReady')
     state.ready = true
   }
   setup().then()

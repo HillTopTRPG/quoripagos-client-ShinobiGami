@@ -90,6 +90,7 @@ export default makeStore<Store>('scenario-store', () => {
   const setup = async (): Promise<void> => {
     await requestData()
     if (state.list.length) {
+      console.log('scenario store isReady')
       state.ready = true
       return
     }

@@ -78,7 +78,7 @@ h2 {
   width: 100%;
   font-size: calc(var(--sheet-font-size) * 1.2);
 
-  > :first-child {
+  .title {
     flex: 1;
     text-align: left;
   }

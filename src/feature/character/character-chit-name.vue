@@ -10,6 +10,8 @@
       <span class="message" v-if="isGm && secretCheck">PL不可視</span>
       <div class="image">{{ oneName }}</div>
       <div class="label" v-if="viewName">{{ characterSheetName }}</div>
+      <button v-if="!viewName && isPrePlot === 'selecting' && prePlot1 > -2 && prePlot2 > -2 && prePlotIsReady !== 'finished'" @click="onPlotSelect()">選択</button>
+      <div v-if="!viewName && isPrePlot === 'selecting' && prePlot1 > -2 && prePlot2 > -2 && prePlotIsReady === 'finished'">選択済</div>
     </div>
   </div>
 </template>
@@ -19,8 +21,9 @@ import { computed, defineComponent, PropType, reactive, ref, watch } from 'vue'
 import MediaListStore from '@/feature/media-list/data'
 import ScenarioStore from '@/feature/scenario/data'
 import CharacterStore from '@/feature/character/data'
-import { Enigma, NPC, PC, RightHand } from '@/core/utility/shinobigamiScenario'
+import { Enigma, NPC, PC, PrePlotIsReady, RightHand, VelocityChitBase } from '@/core/utility/shinobigamiScenario'
 import UserStore from '@/core/data/user'
+import RoomSettingStore from '@/feature/room-setting/data'
 
 export default defineComponent({
   name: 'character-chit-name',
@@ -40,6 +43,10 @@ export default defineComponent({
     viewName: {
       type: Boolean,
       required: true
+    },
+    plot: {
+      type: Number,
+      default: -2
     }
   },
   setup(props, { emit }) {
@@ -48,45 +55,64 @@ export default defineComponent({
     const mediaListState = MediaListStore.injector()
     const scenarioState = ScenarioStore.injector()
     const characterState = CharacterStore.injector()
+    const roomSettingState = RoomSettingStore.injector()
+
+    const isPrePlot = computed(() => roomSettingState.roomSetting?.isPrePlot)
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const styleObj = reactive<any>({})
     const oneName = ref('')
     const scenarioName = ref('')
     const characterSheetName = ref('')
     const secretCheck = ref(false)
+    const prePlotIsReady = ref<PrePlotIsReady>('none')
+    const prePlot1 = ref(-2)
+    const prePlot2 = ref(-2)
     watch([
       () => props.type,
       () => props.target,
       () => characterState.characterList,
-      () => scenarioState.currentScenario.sheetInfo.pc,
-      () => scenarioState.currentScenario.sheetInfo.npc,
-      () => scenarioState.currentScenario.sheetInfo.righthand,
-      () => scenarioState.currentScenario.sheetInfo.enigma
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
     ], () => {
       let c: PC | NPC | RightHand | Enigma | undefined
-      const sheetInfo = scenarioState.currentScenario.sheetInfo
       if (props.type === 'pc') {
-        c = sheetInfo.pc.find(p => p._characterKey === props.target)
+        c = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(p => p._characterKey === props.target)
         secretCheck.value = false
+        if (!c) return
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const character = characterState.characterList.find(character => character.key === (c as any)?._characterKey)
+        const character = characterState.characterList.find(character => character.key === (c as any)._characterKey)
         characterSheetName.value = character?.data?.sheetInfo.characterName || ''
+        prePlotIsReady.value = c.prePlotIsReady
+        prePlot1.value = c.prePlot1
+        prePlot2.value = c.prePlot2
       }
       if (props.type === 'npc') {
-        c = sheetInfo.npc.find(p => p._characterKey === props.target)
-        secretCheck.value = c?.secretcheck || false
-        characterSheetName.value = c?.name || ''
+        c = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(p => p._characterKey === props.target)
+        if (!c) return
+        secretCheck.value = c.secretcheck
+        characterSheetName.value = c.name
+        prePlotIsReady.value = c.prePlotIsReady
+        prePlot1.value = c.prePlot1
+        prePlot2.value = c.prePlot2
       }
       if (props.type === 'right-hand') {
-        c = sheetInfo.righthand.find(p => p._characterKey === props.target)
-        secretCheck.value = c?._secretCheck || false
-        characterSheetName.value = c?.name || ''
+        c = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(p => p._characterKey === props.target)
+        if (!c) return
+        secretCheck.value = c._secretCheck
+        characterSheetName.value = c.name
+        prePlotIsReady.value = c.prePlotIsReady
+        prePlot1.value = c.prePlot1
+        prePlot2.value = c.prePlot2
       }
       if (props.type === 'enigma') {
-        c = sheetInfo.enigma.find(p => p.name === props.target)
+        c = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma.find(p => p.name === props.target)
+        if (!c) return
         secretCheck.value = false
-        characterSheetName.value = c?.name || ''
+        characterSheetName.value = c.name
       }
       if (c) {
         scenarioName.value = c.name
@@ -105,6 +131,20 @@ export default defineComponent({
       oneName,
       scenarioName,
       characterSheetName,
+      prePlotIsReady,
+      prePlot1,
+      prePlot2,
+      isPrePlot,
+      onPlotSelect: () => {
+        const c: VelocityChitBase | null = (props.type === 'pc'
+          ? scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(p => p._characterKey === props.target)
+          : props.type === 'npc'
+            ? scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(p => p._characterKey === props.target)
+            : scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(p => p._characterKey === props.target)) || null
+        if (!c) return
+        c.plot = props.plot
+        c.prePlotIsReady = 'finished'
+      },
       onSelect: () => { emit('select') }
     }
   }

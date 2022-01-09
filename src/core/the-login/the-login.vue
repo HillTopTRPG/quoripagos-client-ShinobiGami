@@ -1,7 +1,7 @@
 <template>
-  <img class="mascot-normal" v-if="mode === 'login'" src="https://quoridorn.com/img/mascot/normal/mascot_normal.png" alt="">
-  <img class="mascot-normal slide" v-if="isHideMascotView" src="https://quoridorn.com/img/mascot/normal/mascot_normal.png" alt="">
   <div id="screen-wrapper" :class="[mode, isHideMascotView ? 'animation' : '']">
+    <img class="mascot-normal" v-if="mode === 'login'" src="https://quoridorn.com/img/mascot/normal/mascot_normal.png" alt="">
+    <img class="mascot-normal slide" v-if="isHideMascotView" src="https://quoridorn.com/img/mascot/normal/mascot_normal.png" alt="">
     <transition name="the-login">
       <div id="the-login" :class="classObj" v-if="mode === 'login'">
         <div v-show="!roomList.length">サーバー通信中</div>
@@ -132,7 +132,7 @@ export default defineComponent({
 
 .mascot-normal {
   position: absolute;
-  right: 0;
+  right: 50%;
   bottom: 0;
   width: 40vmin;
   height: 40vmin;

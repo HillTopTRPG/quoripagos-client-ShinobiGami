@@ -4,16 +4,42 @@
     <div v-else>コマを選択して、情報を確認／編集してください。</div>
     <div class="h-box">
       <template v-for="(p, idx) in pcList" :key="idx">
-        <character-chit-name :view-name="true" type="pc" :target="p._characterKey" label="PC" @select="onSelectEditChit(p._characterKey, 'pc')" />
+        <character-chit-name
+          :view-name="true"
+          type="pc"
+          :target="p._characterKey"
+          label="PC"
+          @select="onSelectEditChit(p._characterKey, 'pc')"
+        />
       </template>
       <template v-for="(n, idx) in npcList" :key="idx">
-        <character-chit-name :view-name="true" type="npc" :target="n._characterKey" label="NPC" @select="onSelectEditChit(n._characterKey, 'npc')" v-if="isGm || !n.secretcheck" />
+        <character-chit-name
+          :view-name="true"
+          type="npc"
+          :target="n._characterKey"
+          label="NPC"
+          @select="onSelectEditChit(n._characterKey, 'npc')"
+          v-if="isGm || !n.secretcheck"
+        />
       </template>
       <template v-for="(r, idx) in rightHandList" :key="idx">
-        <character-chit-name :view-name="true" type="right-hand" :target="r._characterKey" label="腹心" @select="onSelectEditChit(r._characterKey, 'right-hand')" v-if="isGm || !r._secretCheck" />
+        <character-chit-name
+          :view-name="true"
+          type="right-hand"
+          :target="r._characterKey"
+          label="腹心"
+          @select="onSelectEditChit(r._characterKey, 'right-hand')"
+          v-if="isGm || !r._secretCheck"
+        />
       </template>
       <template v-for="(e, idx) in enigmaList" :key="idx">
-        <character-chit-name :view-name="true" type="enigma" :target="e.name" label="エニグマ" @select="onSelectEditChit(e.name, 'enigma')" />
+        <character-chit-name
+          :view-name="true"
+          type="enigma"
+          :target="e.name"
+          label="エニグマ"
+          @select="onSelectEditChit(e.name, 'enigma')"
+        />
       </template>
     </div>
     <character-form

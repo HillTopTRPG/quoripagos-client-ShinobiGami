@@ -29,6 +29,7 @@ export default makeStore<Store>('battle-field-store', () => {
 
   const setup = async (): Promise<void> => {
     await requestData()
+    console.log('battle-field store isReady')
     state.ready = true
   }
   setup().then()

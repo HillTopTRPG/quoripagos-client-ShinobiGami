@@ -77,6 +77,7 @@ export default makeStore<Store>('media-list-store', () => {
       .filter((f): f is (() => Promise<void>) => Boolean(f))
       .reduce((prev, curr) => prev.then(curr), Promise.resolve())
       .catch(() => { /**/ })
+    console.log('media-list store isReady')
     state.ready = true
   }
   setup().then()

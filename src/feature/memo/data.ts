@@ -29,6 +29,7 @@ export default makeStore<Store>('memo-store', () => {
 
   const setup = async (): Promise<void> => {
     await requestData()
+    console.log('memo store isReady')
     state.ready = true
   }
   setup().then()

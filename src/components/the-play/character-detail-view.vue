@@ -58,14 +58,17 @@
               v-model:select-index="selectedNinjaArtsIndex"
             />
           </div>
-          <div class="part-wrap">
+          <div
+            class="part-wrap"
+            v-if="isGm || isOwn || sheetInfoWrap?.specialArtsList.some(sa => sa._openList.some(od => yourPcCharacterKeyList.some(cKey => cKey === od)))"
+          >
             <special-arts-table
               :type="type"
               :target="target"
               mode="normal"
             />
           </div>
-          <div class="part-wrap">
+          <div class="part-wrap" v-if="isGm || isOwn">
             <ninja-tool-table
               :type="type"
               :target="target"
@@ -114,7 +117,11 @@ export default defineComponent({
 
     const ownerName = ref('')
 
+    const isGm = computed(() => userState.selfUser?.type === 'gm')
+    const isOwn = ref(false)
+
     const scenarioData = ref<ActorBase | null>(null)
+    const yourPcCharacterKeyList = ref<string[]>([])
     watch([
       () => props.type,
       () => props.target,
@@ -123,6 +130,12 @@ export default defineComponent({
       () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
       () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
     ], () => {
+      const { isOwn: isOwnRaw } = scenarioState.getChitStatus(
+        props.type,
+        props.target,
+        userState.selfUser?.key || null
+      )
+      isOwn.value = isOwnRaw
       if (props.type === 'pc') {
         const pc = scenarioState.currentScenario.sheetInfo.pc.find(d => d._characterKey === props.target) || null
         const user = userState.userList.find(u => u.key === pc?._userKey)
@@ -141,6 +154,9 @@ export default defineComponent({
         scenarioData.value = null
         ownerName.value = ''
       }
+      yourPcCharacterKeyList.value = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc
+        .filter(p => p._userKey === userState.selfUser?.key)
+        .map(p => p._characterKey) || []
     }, { immediate: true, deep: true })
 
     const sheetInfoWrap = ref<ShinobiGami | null>(null)
@@ -166,6 +182,9 @@ export default defineComponent({
     })
 
     return {
+      isGm,
+      isOwn,
+      yourPcCharacterKeyList,
       elmId,
       scenarioData,
       ownerName,
@@ -261,9 +280,11 @@ export default defineComponent({
 }
 
 .character-detail-view .part-wrap {
-  @include common.flex-box(column, flex-start, flex-start);
+  @include common.inline-flex-box(column, flex-start, flex-start);
+  width: 100%;
   max-width: 100%;
-  overflow-x: auto;
+  min-width: 100%;
+  overflow: auto;
   gap: 0.5rem;
 
   &:not(.first) {
@@ -283,6 +304,9 @@ export default defineComponent({
   @include common.flex-box(row, flex-start, flex-start, wrap);
   gap: 0.5rem;
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 100%;
   padding-bottom: 0.5rem;
 
   &:before {

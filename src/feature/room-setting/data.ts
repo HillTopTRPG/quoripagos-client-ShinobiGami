@@ -7,6 +7,7 @@ export type RoomSetting = {
   cycle: number;
   round: number;
   battleField: number; // 0: 平地, 1: 水中, 2: 高所, 3: 悪天候, 4: 雑踏, 5: 極地
+  isPrePlot: 'none' | 'pre-plot' | 'select' | 'selecting' | 'finish' | 'finished';
 }
 
 type Store = {
@@ -29,7 +30,8 @@ export default makeStore<Store>('room-setting-store', () => {
       'sceneKey',
       'cycle',
       'round',
-      'battleField'
+      'battleField',
+      'isPrePlot'
     ]
   )
 
@@ -38,6 +40,7 @@ export default makeStore<Store>('room-setting-store', () => {
     await requestData()
 
     if (getRoomSetting()) {
+      console.log('room-setting store isReady')
       state.ready = true
       return
     }
@@ -48,7 +51,8 @@ export default makeStore<Store>('room-setting-store', () => {
         sceneKey: null,
         cycle: 0,
         round: 0,
-        battleField: 0
+        battleField: 0,
+        isPrePlot: 'none'
       }
     })
     let intervalId: number | null = null
@@ -59,6 +63,7 @@ export default makeStore<Store>('room-setting-store', () => {
             window.clearInterval(intervalId)
             intervalId = null
             state.ready = true
+            console.log('room-setting store isReady')
             resolve()
           }
         }
