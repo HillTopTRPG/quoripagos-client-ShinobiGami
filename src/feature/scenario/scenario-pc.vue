@@ -139,18 +139,18 @@
     </template>
     <template v-for="d in npcListWrap" :key="d.raw._characterKey">
       <tr v-if="d.raw._characterKey !== target">
-        <td>NPC {{ d.raw.name }}</td>
-        <td>{{ d.raw._placementOpenList.some(od => od === target) ? '⭕️' : '' }}</td>
-        <td></td>
-        <td>{{ d.raw._secretOpenList.some(od => od === target) ? isGm || isOwn ? d.raw.secret || '[秘密なし]' : '⭕️' : '' }}</td>
+        <td class="name">NPC {{ d.raw.name }}</td>
+        <td class="where">{{ d.raw._placementOpenList.some(od => od === target) ? '⭕️' : '' }}</td>
+        <td class="mystery-skill">-</td>
+        <td class="secret">{{ d.raw._secretOpenList.some(od => od === target) ? isGm || isOwn ? d.raw.secret || '[秘密なし]' : '⭕️' : '' }}</td>
       </tr>
     </template>
     <template v-for="d in rightHandListWrap" :key="d.raw._characterKey">
       <tr v-if="d.raw._characterKey !== target">
-        <td>腹心 {{ d.raw.name }}</td>
-        <td></td>
-        <td></td>
-        <td>-</td>
+        <td class="name">腹心 {{ d.raw.name }}</td>
+        <td class="where">-</td>
+        <td class="mystery-skill">-</td>
+        <td class="secret">-</td>
       </tr>
     </template>
   </table>

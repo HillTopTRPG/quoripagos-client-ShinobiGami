@@ -4,7 +4,7 @@ import { loadYaml, StoreData } from '@/core/utility/FileUtility'
 import { io, Socket } from 'socket.io-client'
 import { cutInDialog, errorDialog } from '@/core/utility/dialog'
 
-type ConnectInfo = {
+export type ConnectInfo = {
   quoripagosServer: string;
   bcdiceServer: string;
   skywayApiKey: string;

@@ -320,5 +320,9 @@ export default defineComponent({
     opacity: 0.1;
     z-index: -1;
   }
+
+  &:last-child {
+    margin-bottom: calc(100vh - 5rem - 0.5rem - #{common.$header-height});
+  }
 }
 </style>

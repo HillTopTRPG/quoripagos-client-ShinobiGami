@@ -1,7 +1,12 @@
 <template>
   <div
     class="chit"
-    :class="[type, viewName ? 'has-name' : 'non-name', isGm && secretCheck ? 'gm-only' : 'normal']"
+    :class="[
+      type,
+      viewName ? 'has-name' : 'non-name',
+      isGm && secretCheck ? 'gm-only' : 'normal',
+      !viewName && prePlot1 > -2 && prePlot2 > -2 && ((!isBindedUser && isGm) || isOwn) && plotRef === plot ? 'plot-selected' : ''
+    ]"
     :style="styleObj"
     @click="onSelect()"
   >
@@ -10,8 +15,10 @@
       <span class="message" v-if="isGm && secretCheck">PL不可視</span>
       <div class="image">{{ oneName }}</div>
       <div class="label" v-if="viewName">{{ characterSheetName }}</div>
-      <button v-if="!viewName && isPrePlot === 'selecting' && prePlot1 > -2 && prePlot2 > -2 && prePlotIsReady !== 'finished'" @click="onPlotSelect()">選択</button>
-      <div v-if="!viewName && isPrePlot === 'selecting' && prePlot1 > -2 && prePlot2 > -2 && prePlotIsReady === 'finished'">選択済</div>
+      <template v-if="!viewName && prePlot1 > -2 && prePlot2 > -2">
+        <button v-if="isGm || isOwn" @click="onPlotSelect()">{{ isBindedUser && isGm ? '強制' : '選択' }}</button>
+        <div v-else>選択{{ plotRef !== prePlot1 && plotRef !== prePlot2 ? '中' : '済' }}</div>
+      </template>
     </div>
   </div>
 </template>
@@ -23,7 +30,6 @@ import ScenarioStore from '@/feature/scenario/data'
 import CharacterStore from '@/feature/character/data'
 import { Enigma, NPC, PC, PrePlotIsReady, RightHand, VelocityChitBase } from '@/core/utility/shinobigamiScenario'
 import UserStore from '@/core/data/user'
-import RoomSettingStore from '@/feature/room-setting/data'
 
 export default defineComponent({
   name: 'character-chit-name',
@@ -55,9 +61,7 @@ export default defineComponent({
     const mediaListState = MediaListStore.injector()
     const scenarioState = ScenarioStore.injector()
     const characterState = CharacterStore.injector()
-    const roomSettingState = RoomSettingStore.injector()
-
-    const isPrePlot = computed(() => roomSettingState.roomSetting?.isPrePlot)
+    // const roomSettingState = RoomSettingStore.injector()
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const styleObj = reactive<any>({})
@@ -66,8 +70,14 @@ export default defineComponent({
     const characterSheetName = ref('')
     const secretCheck = ref(false)
     const prePlotIsReady = ref<PrePlotIsReady>('none')
+    const isBindedUser = ref(false)
+    const plotRef = ref(-2)
     const prePlot1 = ref(-2)
     const prePlot2 = ref(-2)
+    const isOwn = ref(false)
+    const isSecretOpen = ref(false)
+    const isPlacementOpen = ref(false)
+    const isSheetShow = ref(false)
     watch([
       () => props.type,
       () => props.target,
@@ -78,6 +88,11 @@ export default defineComponent({
       () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
     ], () => {
       let c: PC | NPC | RightHand | Enigma | undefined
+      const chitStatus = scenarioState.getChitStatus(props.type, props.target, userState.selfUser?.key || '')
+      isOwn.value = chitStatus.isOwn
+      isSecretOpen.value = chitStatus.isSecretOpen
+      isPlacementOpen.value = chitStatus.isPlacementOpen
+      isSheetShow.value = chitStatus.isSheetShow
       if (props.type === 'pc') {
         c = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(p => p._characterKey === props.target)
         secretCheck.value = false
@@ -87,8 +102,10 @@ export default defineComponent({
         const character = characterState.characterList.find(character => character.key === (c as any)._characterKey)
         characterSheetName.value = character?.data?.sheetInfo.characterName || ''
         prePlotIsReady.value = c.prePlotIsReady
+        plotRef.value = c.plot
         prePlot1.value = c.prePlot1
         prePlot2.value = c.prePlot2
+        isBindedUser.value = Boolean(c._userKey)
       }
       if (props.type === 'npc') {
         c = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.find(p => p._characterKey === props.target)
@@ -96,8 +113,10 @@ export default defineComponent({
         secretCheck.value = c.secretcheck
         characterSheetName.value = c.name
         prePlotIsReady.value = c.prePlotIsReady
+        plotRef.value = c.plot
         prePlot1.value = c.prePlot1
         prePlot2.value = c.prePlot2
+        isBindedUser.value = false
       }
       if (props.type === 'right-hand') {
         c = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(p => p._characterKey === props.target)
@@ -105,14 +124,17 @@ export default defineComponent({
         secretCheck.value = c._secretCheck
         characterSheetName.value = c.name
         prePlotIsReady.value = c.prePlotIsReady
+        plotRef.value = c.plot
         prePlot1.value = c.prePlot1
         prePlot2.value = c.prePlot2
+        isBindedUser.value = false
       }
       if (props.type === 'enigma') {
         c = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma.find(p => p.name === props.target)
         if (!c) return
         secretCheck.value = false
         characterSheetName.value = c.name
+        isBindedUser.value = false
       }
       if (c) {
         scenarioName.value = c.name
@@ -132,9 +154,14 @@ export default defineComponent({
       scenarioName,
       characterSheetName,
       prePlotIsReady,
+      plotRef,
       prePlot1,
       prePlot2,
-      isPrePlot,
+      isOwn,
+      isSecretOpen,
+      isPlacementOpen,
+      isSheetShow,
+      isBindedUser,
       onPlotSelect: () => {
         const c: VelocityChitBase | null = (props.type === 'pc'
           ? scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.find(p => p._characterKey === props.target)
@@ -143,7 +170,6 @@ export default defineComponent({
             : scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.find(p => p._characterKey === props.target)) || null
         if (!c) return
         c.plot = props.plot
-        c.prePlotIsReady = 'finished'
       },
       onSelect: () => { emit('select') }
     }
@@ -168,6 +194,10 @@ export default defineComponent({
 
   &.gm-only {
     padding: 0.88em 0 2.9em 0 !important;
+  }
+
+  &.plot-selected {
+    outline: 2px solid red;
   }
 
   &:before {

@@ -68,8 +68,12 @@
         </div>
       </div>
       <template #left-box>
-        <template v-for="c in chatList" :key="c.key">
-          <div class="chat" :style="getChatStyle(c.data, 0)">
+        <template v-if="!chatList.length">
+          ここはチャット欄です。
+        </template>
+        <template v-else>
+          <template v-for="c in chatList" :key="c.key">
+            <div class="chat" :style="getChatStyle(c.data, 0)">
             <span class="from-label">
               <span>{{ getFromLabel(c.data || null) }}</span>
               <i18n-d
@@ -78,25 +82,26 @@
                 :format="getTimeFormat(c.createDateTime)"
               ></i18n-d>
             </span>
-            <template v-if="c.data?.secret === 'secret' && c.owner !== selfUserRef?.key">
-              シークレットダイスロール
-            </template>
-            <span v-else class="chat-text">
+              <template v-if="c.data?.secret === 'secret' && c.owner !== selfUserRef?.key">
+                シークレットダイスロール
+              </template>
+              <span v-else class="chat-text">
               {{ c.data?.raw }}
               <button @click="openSecretDiceRoll(c.key)" v-if="c.data?.secret === 'secret'">公開</button>
             </span>
-            <template v-if="c.data?.secret === 'opened'">
-              [公開済]
-            </template>
-          </div>
-          <div
-            class="chat dice-result"
-            :style="getChatStyle(c.data, 0)"
-            v-if="c.data?.diceRaw && (c.data?.secret !== 'secret' || c.owner === selfUserRef?.key)"
-          >
-            <span class="dice-roll-result" v-if="c.data?.diceRollResult">{{ c.data?.diceRollResult }}</span>
-            {{ c.data?.diceRaw }}
-          </div>
+              <template v-if="c.data?.secret === 'opened'">
+                [公開済]
+              </template>
+            </div>
+            <div
+              class="chat dice-result"
+              :style="getChatStyle(c.data, 0)"
+              v-if="c.data?.diceRaw && (c.data?.secret !== 'secret' || c.owner === selfUserRef?.key)"
+            >
+              <span class="dice-roll-result" v-if="c.data?.diceRollResult">{{ c.data?.diceRollResult }}</span>
+              {{ c.data?.diceRaw }}
+            </div>
+          </template>
         </template>
         <div class="chat-bottom" ref="chatBottomElm"></div>
       </template>
@@ -876,6 +881,7 @@ textarea {
   align-items: center;
   z-index: 30001;
   gap: 0.5rem;
+  overflow-y: hidden !important;
 }
 
 @include common.deep(".right-box") {

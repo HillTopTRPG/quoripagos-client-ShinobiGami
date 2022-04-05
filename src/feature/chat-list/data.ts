@@ -1,9 +1,11 @@
 import { reactive } from 'vue'
 import { commonStoreDataProcess, makeStore, StoreUpdateProperties } from '@/core/utility/vue3'
 import { StoreData } from '@/core/utility/FileUtility'
+import RoomSettingStore from '@/feature/room-setting/data'
+import { errorDialog } from '@/core/utility/dialog'
 
 export type DiceResult = {
-  kind: 'normal' | 'tens_d10' | 'd9';
+  kind: string; // 'normal' | 'tens_d10' | 'd9';
   sides: number;
   value: number;
 };
@@ -37,7 +39,7 @@ type Store = {
   list: StoreData<ChatStore>[];
   requestData: () => Promise<void>;
   insertData: (...list: ChatStore[]) => Promise<void>;
-  diceRoll: (command: string) => Promise<BcdiceDiceRollResult>;
+  diceRoll: (command: string) => Promise<BcdiceDiceRollResult | null>;
 }
 
 export default makeStore<Store>('chat-list-store', () => {
@@ -45,6 +47,7 @@ export default makeStore<Store>('chat-list-store', () => {
     ready: false,
     list: []
   })
+  const roomSettingState = RoomSettingStore.injector()
 
   const { requestData, insertData } = commonStoreDataProcess(
     state.list,
@@ -81,17 +84,37 @@ export default makeStore<Store>('chat-list-store', () => {
       console.log(JSON.stringify(list, null, '  '))
       await insertData(...list.map(c => ({ owner: null, ownerType: null, data: c })))
     },
-    diceRoll: async (command: string): Promise<BcdiceDiceRollResult> => {
-      const baseUrl = 'https://bcdice.onlinesession.app'
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const json: any = await (await fetch(`${baseUrl}/v2/game_system/ShinobiGami/roll?command=${encodeURIComponent(command)}`)).json()
+    diceRoll: async (command: string): Promise<BcdiceDiceRollResult | null> => {
+      const baseUrl = roomSettingState.roomSetting?.bcdiceApiUrl
 
-      if (!json.ok) throw json
-      delete json.ok
+      const commandUrl = `${baseUrl}/v2/game_system/ShinobiGami/roll?command=${encodeURIComponent(command)}`
+      let fetchResult: Response | null = null
+      try {
+        fetchResult = await fetch(commandUrl)
+      } catch (_) {
+        setTimeout(() => {
+          errorDialog({
+            title: 'BcdiceApi接続失敗',
+            text: `${commandUrl}`
+          }).then()
+        })
+        return null
+      }
+      try {
+        if (!fetchResult) return null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const json: any = await fetchResult.json()
 
-      json.text = json.text.replace(/(^: )/g, '').replace(/＞/g, '→')
+        if (!json.ok) throw json
+        delete json.ok
 
-      return json as BcdiceDiceRollResult
+        json.text = json.text.replace(/(^: )/g, '').replace(/＞/g, '→')
+
+        return json as BcdiceDiceRollResult
+      } catch (err) {
+        console.log(err)
+        return null
+      }
     }
   }
 })

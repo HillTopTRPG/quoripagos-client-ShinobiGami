@@ -6,7 +6,7 @@
         label="PC"
         :target="c._characterKey"
         :view-name="false"
-        v-if="c.plot === -1 && (isPrePlot === 'none' || isPrePlot === 'selecting' || isPrePlot === 'finished')"
+        v-if="c.plot === -1 && (isPrePlot === 'none' || isPrePlot === 'selected' || isPrePlot === 'finished')"
       />
     </transition>
   </template>
@@ -17,7 +17,7 @@
         label="NPC"
         :target="n._characterKey"
         :view-name="false"
-        v-if="n.plot === -1 && !n.secretcheck && (isPrePlot === 'none' || isPrePlot === 'selecting' || isPrePlot === 'finished')"
+        v-if="n.plot === -1 && !n.secretcheck && (isPrePlot === 'none' || isPrePlot === 'selected' || isPrePlot === 'finished')"
       />
     </transition>
   </template>
@@ -28,7 +28,7 @@
         label="腹心"
         :target="r._characterKey"
         :view-name="false"
-        v-if="r.plot === -1 && !r._secretCheck && (isPrePlot === 'none' || isPrePlot === 'selecting' || isPrePlot === 'finished')"
+        v-if="r.plot === -1 && !r._secretCheck && (isPrePlot === 'none' || isPrePlot === 'selected' || isPrePlot === 'finished')"
       />
     </transition>
   </template>

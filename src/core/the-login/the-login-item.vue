@@ -43,7 +43,12 @@
             autocomplete="new-password"
             name="room-password-new"
           >
-          <button class="room-btn" type="button" :disabled="!roomName" @click="createRoom(r.roomNo, roomName, roomPassword)">作成</button>
+          <button
+            class="room-btn"
+            type="button"
+            :disabled="!roomName"
+            @click="createRoom(r.roomNo, roomName, roomPassword)"
+          >作成</button>
         </template>
         <template v-else>
           <template v-if="lastRoomLoginType === ''">
@@ -55,11 +60,18 @@
               autocomplete="new-password"
               name="room-password"
               @focus="onFocus($event)"
+              @keydown.enter="isRoomLogined = true;loginRoom(r.roomNo, roomPassword)"
             >
-            <button :disabled="isRoomLogined" class="room-btn" type="button" @click="isRoomLogined = true;loginRoom(r.roomNo, roomPassword)">確認</button>
+            <button
+              :disabled="isRoomLogined"
+              class="room-btn"
+              type="button"
+              @click="isRoomLogined = true;loginRoom(r.roomNo, roomPassword)"
+            >確認</button>
           </template>
           <template v-else>
             <input
+              class="user-name"
               ref="userNameInputElm"
               type="text"
               v-model="userName"
@@ -71,7 +83,7 @@
             <!-- ユーザー選択 -->
             <ul v-if="userList.length">
               <li v-for="u in userList" :key="u.name">
-                <button type="button" v-touch="() => selectUser(u.name, u.type)">{{ u.name }}</button>
+                <button type="button" @click="() => selectUser(u.name, u.type)">{{ u.name }}</button>
               </li>
             </ul>
             <input
@@ -82,8 +94,13 @@
               autocomplete="current-password"
               name="password"
               @focus="onFocus($event)"
+              @keydown.enter="isUserLogined = true;onLoginUser(userName, userType, userPassword)"
             >
-            <button :disabled="!userName || isUserLogined" type="button" @click="isUserLogined = true;onLoginUser(userName, userType, userPassword)">ユーザログイン</button>
+            <button
+              :disabled="!userName || isUserLogined"
+              type="button"
+              @click="isUserLogined = true;onLoginUser(userName, userType, userPassword)"
+            >ユーザログイン</button>
             <select ref="userTypeSelectElm" v-model="userType">
               <option value="pl">プレイヤー</option>
               <option value="gm">ゲームマスター</option>

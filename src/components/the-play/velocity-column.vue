@@ -13,7 +13,7 @@
             label="PC"
             :target="p._characterKey"
             :view-name="false"
-            v-if="!p.isFumble && ((isPrePlot === 'none' && p.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (p.prePlot1 === idx || p.prePlot2 === idx)))"
+            v-if="!p.isFumble && ((isPrePlot === 'none' && p.plot === idx) || ((isPrePlot === 'select' || isPrePlot === 'select-re' || isPrePlot === 'select-end') && (p.prePlot1 === idx || p.prePlot2 === idx)))"
             :plot="idx"
           />
         </transition>
@@ -25,7 +25,7 @@
             label="NPC"
             :target="n._characterKey"
             :view-name="false"
-            v-if="!n.isFumble && !n.secretcheck && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
+            v-if="!n.isFumble && !n.secretcheck && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'select' || isPrePlot === 'select-re' || isPrePlot === 'select-end') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
             :plot="idx"
           />
         </transition>
@@ -37,7 +37,7 @@
             label="腹心"
             :target="n._characterKey"
             :view-name="false"
-            v-if="!n.isFumble && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
+            v-if="!n.isFumble && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'select' || isPrePlot === 'select-re' || isPrePlot === 'select-end') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
             :plot="idx"
           />
         </transition>
@@ -52,7 +52,7 @@
             label="PC"
             :target="p._characterKey"
             :view-name="false"
-            v-if="p.isFumble && ((isPrePlot=== 'none' && p.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (p.prePlot1 === idx || p.prePlot2 === idx)))"
+            v-if="p.isFumble && ((isPrePlot=== 'none' && p.plot === idx) || ((isPrePlot === 'select' || isPrePlot === 'select-re' || isPrePlot === 'select-end') && (p.prePlot1 === idx || p.prePlot2 === idx)))"
             :plot="idx"
           />
         </transition>
@@ -64,7 +64,7 @@
             label="NPC"
             :target="n._characterKey"
             :view-name="false"
-            v-if="n.isFumble && !n.secretcheck && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
+            v-if="n.isFumble && !n.secretcheck && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'select' || isPrePlot === 'select-re' || isPrePlot === 'select-end') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
             :plot="idx"
           />
         </transition>
@@ -76,7 +76,7 @@
             label="腹心"
             :target="n._characterKey"
             :view-name="false"
-            v-if="n.isFumble && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'selecting' || isPrePlot === 'finished') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
+            v-if="n.isFumble && ((isPrePlot === 'none' && n.plot === idx) || ((isPrePlot === 'select' || isPrePlot === 'select-re' || isPrePlot === 'select-end') && (n.prePlot1 === idx || n.prePlot2 === idx)))"
             :plot="idx"
           />
         </transition>

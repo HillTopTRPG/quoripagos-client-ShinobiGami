@@ -50,10 +50,8 @@ export default defineComponent({
     menuItemList.push({ label: 'ユーザー設定', type: 'user-setting', isUnique: true })
     if (userType === 'gm') {
       menuItemList.push({ label: 'シーン(GMのみ編集可)', type: 'scene', isUnique: true })
-      // menuItemList.push({ label: '共有メモ', type: 'memo', isUnique: false })
+      menuItemList.push({ label: '部屋設定(GMのみ編集可)', type: 'room-setting', isUnique: true })
       // menuItemList.push({ label: 'タグ', type: 'tag', isUnique: false })
-      // menuItemList.push({ label: '戦場表', type: 'battle-field', isUnique: false })
-      // menuItemList.push({ label: 'ペルソナ', type: 'persona', isUnique: false })
     }
 
     const rightPaneTaskList = ref<RightPaneTask[]>([])

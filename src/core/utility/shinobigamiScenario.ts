@@ -1,6 +1,6 @@
 import { getJsonByGet, getJsonByJsonp } from '@/core/utility/Utility'
 
-export type PrePlotIsReady = 'none' | 'select' | 'finished';
+export type PrePlotIsReady = 'none' | 'selected';
 export type VelocityChitBase = {
   prePlot1: number;
   prePlot2: number;
@@ -229,56 +229,77 @@ export class ShinobigamiScenarioHelper {
         type4: boolFilter(json.base.type4),
         stage: textFilter(json.base.stage)
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      npc: json.npc.map((n: any) => ({
-        intro: textFilter(n.intro),
-        name: textFilter(n.name),
-        mission: textFilter(n.mission),
-        recommend: textFilter(n.recommend),
-        secret: textFilter(n.secret),
-        secretcheck: boolFilter(n.secretcheck)
-      })),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      pc: json.pc.map((n: any) => ({
-        intro: textFilter(n.intro),
-        name: textFilter(n.name),
-        mission: textFilter(n.mission),
-        recommend: textFilter(n.recommend),
-        secret: textFilter(n.secret)
-      })),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      enigma: json.enigma.map((n: any) => ({
-        name: textFilter(n.name),
-        menace: textFilter(n.menace),
-        notes: textFilter(n.notes),
-        power: textFilter(n.power),
-        target: textFilter(n.target)
-      })),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      characters: json.characters.map((n: any) => ({
-        inputUrl: textFilter(n.inputUrl),
-        note: textFilter(n.note),
-        secret: boolFilter(n.secret)
-      })),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prize: json.prize.map((n: any) => ({
-        careerClose: textFilter(n.careerClose),
-        careerOpen: textFilter(n.careerOpen),
-        name: textFilter(n.name),
-        secret: boolFilter(n.secret)
-      })),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      righthand: json.righthand.map((n: any) => ({
-        menace: textFilter(n.menace),
-        name: textFilter(n.name),
-        notes: textFilter(n.notes)
-      })),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      summary: json.summary.map((n: any) => ({
-        contents: textFilter(n.contents),
-        secret: boolFilter(n.secret),
-        title: textFilter(n.title)
-      }))
+      npc: json.npc
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((n: any) => ({
+          intro: textFilter(n.intro),
+          name: textFilter(n.name),
+          mission: textFilter(n.mission),
+          recommend: textFilter(n.recommend),
+          secret: textFilter(n.secret),
+          secretcheck: boolFilter(n.secretcheck)
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((n: any) => Boolean(n.intro) || Boolean(n.name) || Boolean(n.mission) || Boolean(n.recommend) || Boolean(n.secret)),
+      pc: json.pc
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((n: any) => ({
+          intro: textFilter(n.intro),
+          name: textFilter(n.name),
+          mission: textFilter(n.mission),
+          recommend: textFilter(n.recommend),
+          secret: textFilter(n.secret)
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((n: any) => Boolean(n.intro) || Boolean(n.name) || Boolean(n.mission) || Boolean(n.recommend) || Boolean(n.secret)),
+      enigma: json.enigma
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((n: any) => ({
+          name: textFilter(n.name),
+          menace: textFilter(n.menace),
+          notes: textFilter(n.notes),
+          power: textFilter(n.power),
+          target: textFilter(n.target)
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((n: any) => Boolean(n.name) || Boolean(n.menace) || Boolean(n.notes) || Boolean(n.power) || Boolean(n.target)),
+      characters: json.characters
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((n: any) => ({
+          inputUrl: textFilter(n.inputUrl),
+          note: textFilter(n.note),
+          secret: boolFilter(n.secret)
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((n: any) => Boolean(n.inputUrl) || Boolean(n.note)),
+      prize: json.prize
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((n: any) => ({
+          careerClose: textFilter(n.careerClose),
+          careerOpen: textFilter(n.careerOpen),
+          name: textFilter(n.name),
+          secret: boolFilter(n.secret)
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((n: any) => Boolean(n.careerClose) || Boolean(n.careerOpen) || Boolean(n.name)),
+      righthand: json.righthand
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((n: any) => ({
+          menace: textFilter(n.menace),
+          name: textFilter(n.name),
+          notes: textFilter(n.notes)
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((n: any) => Boolean(n.menace) || Boolean(n.name) || Boolean(n.notes)),
+      summary: json.summary
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((n: any) => ({
+          contents: textFilter(n.contents),
+          secret: boolFilter(n.secret),
+          title: textFilter(n.title)
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((n: any) => Boolean(n.contents) || Boolean(n.title))
     }
   }
 }

@@ -165,27 +165,25 @@ export default defineComponent({
     const yourPcCharacterKeyList = ref<string[]>([])
     const isOwn = ref(false)
 
-    watch(
-      [
-        () => props.type,
-        () => props.target,
-        () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
-        () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
-        () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
-        () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
-      ], () => {
-        const { isOwn: isOwnRaw } = scenarioState.getChitStatus(
-          props.type,
-          props.target,
-          userState.selfUser?.key || null
-        )
-        isOwn.value = isOwnRaw
-        isRawViewMode.value = props.mode !== 'update' || (userState.selfUser?.type !== 'gm' && !isOwnRaw)
-        yourPcCharacterKeyList.value = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc
-          .filter(p => p._userKey === userState.selfUser?.key)
-          .map(p => p._characterKey) || []
-      }, { immediate: true, deep: true }
-    )
+    watch([
+      () => props.type,
+      () => props.target,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
+    ], () => {
+      const { isOwn: isOwnRaw } = scenarioState.getChitStatus(
+        props.type,
+        props.target,
+        userState.selfUser?.key || null
+      )
+      isOwn.value = isOwnRaw
+      isRawViewMode.value = props.mode !== 'update' || (userState.selfUser?.type !== 'gm' && !isOwnRaw)
+      yourPcCharacterKeyList.value = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc
+        .filter(p => p._userKey === userState.selfUser?.key)
+        .map(p => p._characterKey) || []
+    }, { immediate: true, deep: true })
 
     const reloadSpecialArts = async () => {
       const helper = new ShinobigamiHelper(sheetInfoWrap.value?.url || '', sheetViewPass.value)

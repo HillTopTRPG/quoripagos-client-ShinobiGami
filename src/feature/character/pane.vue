@@ -74,46 +74,42 @@ export default defineComponent({
     }
 
     // データ編集により不可視状態になるべき場合の不可視化処理
-    watch(
-      [
-        () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
-        () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
-        () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
-        () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
-      ],
-      () => {
-        const sheetInfo = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo
-        const resetValue = () => {
-          selectType.value = null
-          selectTarget.value = null
-        }
-        if (selectType.value === 'pc') {
-          const d = sheetInfo?.pc.find(d => d._characterKey === selectTarget.value)
-          if (!d) return resetValue()
-        }
-        if (selectType.value === 'npc') {
-          const d = sheetInfo?.npc.find(d => d._characterKey === selectTarget.value)
-          if (!d) return resetValue()
-          if (d.secretcheck) return resetValue()
-          if (!sheetInfo?.pc
-            .filter(p => d._sheetOpenList.some(so => so === p._characterKey))
-            .some(pc => pc._userKey === userState.selfUser?.key)) return resetValue()
-        }
-        if (selectType.value === 'right-hand') {
-          const d = sheetInfo?.righthand.find(d => d._characterKey === selectTarget.value)
-          if (!d) return resetValue()
-          if (d._secretCheck) return resetValue()
-          if (!sheetInfo?.pc
-            .filter(p => d._sheetOpenList.some(so => so === p._characterKey))
-            .some(pc => pc._userKey === userState.selfUser?.key)) return resetValue()
-        }
-        if (selectType.value === 'enigma') {
-          const d = sheetInfo?.enigma.find(d => d.name === selectTarget.value)
-          if (!d) return resetValue()
-        }
-      },
-      { deep: true }
-    )
+    watch([
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.enigma
+    ], () => {
+      const sheetInfo = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo
+      const resetValue = () => {
+        selectType.value = null
+        selectTarget.value = null
+      }
+      if (selectType.value === 'pc') {
+        const d = sheetInfo?.pc.find(d => d._characterKey === selectTarget.value)
+        if (!d) return resetValue()
+      }
+      if (selectType.value === 'npc') {
+        const d = sheetInfo?.npc.find(d => d._characterKey === selectTarget.value)
+        if (!d) return resetValue()
+        if (d.secretcheck) return resetValue()
+        if (!sheetInfo?.pc
+          .filter(p => d._sheetOpenList.some(so => so === p._characterKey))
+          .some(pc => pc._userKey === userState.selfUser?.key)) return resetValue()
+      }
+      if (selectType.value === 'right-hand') {
+        const d = sheetInfo?.righthand.find(d => d._characterKey === selectTarget.value)
+        if (!d) return resetValue()
+        if (d._secretCheck) return resetValue()
+        if (!sheetInfo?.pc
+          .filter(p => d._sheetOpenList.some(so => so === p._characterKey))
+          .some(pc => pc._userKey === userState.selfUser?.key)) return resetValue()
+      }
+      if (selectType.value === 'enigma') {
+        const d = sheetInfo?.enigma.find(d => d.name === selectTarget.value)
+        if (!d) return resetValue()
+      }
+    }, { deep: true })
 
     const userState = UserStore.injector()
     const isGm = computed(() => userState.selfUser?.type === 'gm')

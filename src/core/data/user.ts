@@ -135,6 +135,10 @@ export default makeStore<Store>('user-store', () => {
       state.userLoginResponse = null
       state.selectedRoomNo = roomNo
       state.lastRoomLoginType = 'create'
+      setTimeout(() => {
+        const elm: HTMLElement | null = document.querySelector('.user-name')
+        elm?.focus()
+      }, 100)
     },
     unSelectRoom: () => {
       state.selectedRoomNo = 0

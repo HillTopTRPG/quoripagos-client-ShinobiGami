@@ -33,6 +33,7 @@ export type WrapCharacterData<T> = {
 export type ChitStatus = {
   isOwn: boolean;
   isSecretOpen: boolean;
+  isPlacementOpen: boolean;
   isSheetShow: boolean;
 }
 
@@ -206,7 +207,7 @@ export default makeStore<Store>('scenario-store', () => {
     type: 'pc' | 'npc' | 'right-hand' | 'enigma',
     target: string,
     selfUserKey: string | null
-  ): { isOwn: boolean; isSecretOpen: boolean; isPlacementOpen: boolean; isSheetShow: boolean; } => {
+  ): ChitStatus => {
     const sheetInfo = state.list[state.currentIndex].data?.sheetInfo
     if (!sheetInfo) throw new Error()
     const checkList = (list: string[]) =>
@@ -286,7 +287,7 @@ export default makeStore<Store>('scenario-store', () => {
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const characterKey = (d as any)._characterKey
-          // console.log(name, type, target, characterKey)
+
           if (type === 'pc') return target === characterKey
           if (type === 'npc') return target === characterKey
           if (type === 'right-hand') return target === characterKey

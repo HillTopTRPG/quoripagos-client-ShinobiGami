@@ -1,7 +1,7 @@
 <template>
-  <select v-if="readable" :value="modelValue" :class="mode" @input="inputHandler">
+  <select :value="modelValue" :class="mode" @input="inputHandler">
     <option disabled>プロット</option>
-    <option :value="-2" :disabled="readonly && modelValue !== -2"></option>
+    <option :value="-2" :disabled="readonly && modelValue !== -2">{{ defaultText }}</option>
     <option :value="-1" :disabled="readonly && modelValue !== -1">ドラマ</option>
     <option :value="0" :disabled="readonly && modelValue !== 0">0</option>
     <option :value="1" :disabled="readonly && modelValue !== 1">1</option>
@@ -12,7 +12,6 @@
     <option :value="6" :disabled="readonly && modelValue !== 6">6</option>
     <option :value="7" :disabled="readonly && modelValue !== 7" v-if="mode === 'normal'">7</option>
   </select>
-  <template v-else>閲覧不可</template>
 </template>
 
 <script lang="ts">
@@ -30,13 +29,13 @@ export default defineComponent({
       type: Boolean,
       default: false
     },
-    readable: {
-      type: Boolean,
-      default: true
-    },
     modelValue: {
       type: Number,
       required: true
+    },
+    defaultText: {
+      type: String,
+      default: ''
     }
   },
   setup(_, { emit }) {

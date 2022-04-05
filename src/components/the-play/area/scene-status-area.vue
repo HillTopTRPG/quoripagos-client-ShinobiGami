@@ -3,7 +3,27 @@
     <cycle-select :limit="limit" v-model="cycle" />
     <span>/{{limit}}</span>
     <round-select v-model="round" />
-    <span v-if="roundPhase">/{{roundPhase}}</span>
+    <label>
+      <span>プロット</span>
+      <template v-if="isPrePlot === 'none'">
+        <button class="plot-button" v-if="isGm" @click="onStartPrePlot()">開始</button>
+        <div v-else class="text">済</div>
+      </template>
+      <template v-else-if="isPrePlot === 'pre-plot' || isPrePlot === 'pre-plot-re'">
+        <div class="text">入力中</div>
+      </template>
+      <template v-else-if="isPrePlot === 'pre-plot-end'">
+        <button class="plot-button" v-if="isGm" @click="onOpenPrePlot()">公開</button>
+        <div v-else class="text">GM操作待ち</div>
+      </template>
+      <template v-else-if="isPrePlot === 'select' || isPrePlot === 'select-re'">
+        <div class="text">選択中</div>
+      </template>
+      <template v-else-if="isPrePlot === 'select-end'">
+        <button class="plot-button" v-if="isGm" @click="onFixPrePlot()">確定</button>
+        <div v-else class="text">GM操作待ち</div>
+      </template>
+    </label>
     <battle-field-select v-model="battleField" />
     <label>
       <span>シーン</span>
@@ -26,6 +46,8 @@ import ScenarioStore from '@/feature/scenario/data'
 import RoomSettingStore from '@/feature/room-setting/data'
 import SceneStore from '@/feature/scene/data'
 import UserStore from '@/core/data/user'
+import { infoDialog } from '@/core/utility/dialog'
+import { PrePlotIsReady, VelocityChitBase } from '@/core/utility/shinobigamiScenario'
 
 export default defineComponent({
   name: 'scene-status-area',
@@ -54,6 +76,27 @@ export default defineComponent({
       roundPhase.value = roomSettingState.roomSetting?.isPrePlot !== 'none' ? 'プロット中' : ''
     }, { immediate: true, deep: true })
 
+    const isPrePlot = computed(() => roomSettingState.roomSetting?.isPrePlot)
+    let timeoutId: number | null = null
+    watch(isPrePlot, async () => {
+      let title = ''
+      let text = ''
+      if (isPrePlot.value === 'pre-plot') {
+        title = 'プロット宣言開始'
+        text = 'プロット宣言をお願いします。\n\nプレイ画面の自分のコマの下の選択肢でプロット値を入力して、決定ボタンを押してください。'
+      } else if (isPrePlot.value === 'select') {
+        title = 'プロット選択開始'
+        text = 'プロットが公開されました。\n\nヴェロシティシステム上で、複数のプロットを行ったコマの位置を決定してください。'
+      } else if (isPrePlot.value === 'none') {
+        title = 'プロット決定'
+        text = 'プロットが決定しました。\n\nプロットの高い人から行動どうぞ。'
+      }
+      if (title && text && timeoutId === null) {
+        await infoDialog({ title, text })
+        timeoutId = window.setTimeout(() => { timeoutId = null }, 100)
+      }
+    })
+
     watch([cycle, round, battleField, currentScene], () => {
       if (roomSettingState.roomSetting) {
         roomSettingState.roomSetting.cycle = cycle.value
@@ -63,6 +106,99 @@ export default defineComponent({
       }
     })
 
+    const onStartPrePlot = () => {
+      if (!roomSettingState.roomSetting) return
+      roomSettingState.roomSetting.isPrePlot = 'pre-plot'
+      const procVelocity = (data: VelocityChitBase) => {
+        data.prePlotIsReady = 'none'
+        data.plot = -2
+        data.prePlot1 = -2
+        data.prePlot2 = -2
+        data.isActed = false
+        data.isFumble = false
+      }
+      scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.forEach(procVelocity)
+      scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.forEach(procVelocity)
+      scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.forEach(procVelocity)
+    }
+
+    const onFixPrePlot = () => {
+      if (!roomSettingState.roomSetting) return
+
+      const velocityToNone = (data: VelocityChitBase) => {
+        data.prePlotIsReady = 'none'
+        if (data.plot === -2) {
+          data.plot = data.prePlot1 > -2 ? data.prePlot1 : data.prePlot2
+        }
+        data.prePlot1 = -2
+        data.prePlot2 = -2
+      }
+
+      roomSettingState.roomSetting.isPrePlot = 'none'
+      scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc.forEach(velocityToNone)
+      scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc.forEach(velocityToNone)
+      scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand.forEach(velocityToNone)
+    }
+
+    const onOpenPrePlot = () => {
+      if (!roomSettingState.roomSetting) return
+      const sheetInfo = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo
+      const cl = (list?: VelocityChitBase[]) => list?.some(
+        n => n.prePlot1 > -2 && n.prePlot2 > -2
+      ) || false
+      if (cl(sheetInfo?.pc) || cl(sheetInfo?.npc) || cl(sheetInfo?.righthand)) {
+        roomSettingState.roomSetting.isPrePlot = 'select'
+      } else {
+        onFixPrePlot()
+      }
+    }
+
+    watch([
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc,
+      () => scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand
+    ], () => {
+      if (!isGm.value) return
+      if (!roomSettingState.roomSetting) return
+      const pcList = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.pc
+      const npcList = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.npc
+      const rightHandList = scenarioState.list[scenarioState.currentIndex]?.data?.sheetInfo.righthand
+      // const isFullEq = (list: VelocityChitBase[] | undefined, prePlotIsReady: PrePlotIsReady): boolean => (list?.filter(v => v.prePlotIsReady === prePlotIsReady).length || 0) === (list?.length || 0)
+      const isFullNe = (list: VelocityChitBase[] | undefined, prePlotIsReady: PrePlotIsReady): boolean => (list?.filter(v => v.prePlotIsReady !== prePlotIsReady).length || 0) === (list?.length || 0)
+      const someEq = (list: VelocityChitBase[] | undefined, prePlotIsReady: PrePlotIsReady): boolean => list?.some(v => v.prePlotIsReady === prePlotIsReady) || false
+      const someBothSelect = (list: VelocityChitBase[] | undefined): boolean => !list ? false : list.some(d => d.prePlot1 > -2 && d.prePlot1 !== d.plot && d.prePlot2 > -2 && d.prePlot2 !== d.plot)
+
+      setTimeout(() => {
+        if (!roomSettingState.roomSetting) return
+        switch (roomSettingState.roomSetting.isPrePlot) {
+          case 'pre-plot':
+          case 'pre-plot-re':
+            if (isFullNe(pcList, 'none')) {
+              roomSettingState.roomSetting.isPrePlot = 'pre-plot-end'
+            }
+            break
+          case 'pre-plot-end':
+            if (someEq(pcList, 'none')) {
+              roomSettingState.roomSetting.isPrePlot = 'pre-plot-re'
+            }
+            break
+          case 'select':
+          case 'select-re':
+            if (!someBothSelect(pcList) && !someBothSelect(npcList) && !someBothSelect(rightHandList)) {
+              roomSettingState.roomSetting.isPrePlot = 'select-end'
+            }
+            break
+          case 'select-end':
+            if (someBothSelect(pcList) || someBothSelect(npcList) || someBothSelect(rightHandList)) {
+              roomSettingState.roomSetting.isPrePlot = 'select-re'
+            }
+            break
+          default:
+            break
+        }
+      })
+    }, { deep: true, immediate: true })
+
     return {
       isGm,
       cycle,
@@ -71,7 +207,11 @@ export default defineComponent({
       limit,
       sceneList,
       currentScene,
-      roundPhase
+      roundPhase,
+      isPrePlot,
+      onStartPrePlot,
+      onFixPrePlot,
+      onOpenPrePlot
     }
   }
 })
@@ -95,12 +235,16 @@ export default defineComponent({
   span {
     font-size: 80%;
   }
+
+  button,
   select {
     height: 2em;
   }
+
+  .text,
   .readonly-scene {
     height: 2em;
-    @include common.flex-box(column, flex-start, center);
+    @include common.flex-box(column, center, center);
   }
 }
 </style>

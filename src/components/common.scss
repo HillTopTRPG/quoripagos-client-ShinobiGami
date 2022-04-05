@@ -46,6 +46,12 @@ $dice-size: 10vmin;
   flex-wrap: $wrap;
 }
 
+.cut-in {
+  .swal2-content {
+    white-space: pre-wrap;
+  }
+}
+
 //// 変数の定義
 //// min-width
 //$breakpoint-up: (
