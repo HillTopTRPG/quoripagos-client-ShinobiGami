@@ -34,16 +34,6 @@
         {{ sceneList.find(s => s.key === currentScene)?.data?.name || '' }}
       </div>
     </label>
-    <label class="master-volume" :class="{ mute: masterMute }">
-      <span>あなたのマスター音量({{ masterVolume }})</span>
-      <span class="contents">
-        <input type="range" min="0" max="100" v-model="masterVolume" @change="onChangeMasterVolume()">
-        <label class="mute-control">
-          <input type="checkbox" v-model="masterMute">
-          <span class="foreground">Mute</span>
-        </label>
-      </span>
-    </label>
   </div>
 </template>
 
@@ -55,7 +45,6 @@ import RoundSelect from '@/components/the-play/select/round-select.vue'
 import ScenarioStore from '@/feature/scenario/data'
 import RoomSettingStore from '@/feature/room-setting/data'
 import SceneStore from '@/feature/scene/data'
-import UserSettingStore from '@/feature/user-setting/data'
 import UserStore from '@/core/data/user'
 import { infoDialog } from '@/core/utility/dialog'
 import { PrePlotIsReady, VelocityChitBase } from '@/core/utility/shinobigamiScenario'
@@ -65,7 +54,6 @@ export default defineComponent({
   components: { RoundSelect, BattleFieldSelect, CycleSelect },
   setup() {
     const scenarioState = ScenarioStore.injector()
-    const userSettingState = UserSettingStore.injector()
     const roomSettingState = RoomSettingStore.injector()
     const limit = computed(() => scenarioState.currentScenario.sheetInfo.base.limit)
     const sceneState = SceneStore.injector()
@@ -79,26 +67,6 @@ export default defineComponent({
     const battleField = ref(0)
     const currentScene = ref(roomSettingState.roomSetting?.sceneKey)
     const roundPhase = ref('')
-
-    const masterMute = ref(userSettingState.userSetting?.masterMute || false)
-    watch(masterMute, () => {
-      if (userSettingState.userSetting) {
-        userSettingState.userSetting.masterMute = masterMute.value
-      }
-    })
-    const masterVolume = ref(userSettingState.userSetting?.masterVolume || 0)
-    const masterVolumeTimeoutId = ref<number | null>(null)
-    const onChangeMasterVolume = () => {
-      if (userSettingState.userSetting) {
-        userSettingState.userSetting.masterVolume = masterVolume.value
-      }
-      masterVolumeTimeoutId.value = null
-    }
-    watch(masterVolume, () => {
-      if (masterMute.value) masterMute.value = false
-      if (masterVolumeTimeoutId.value !== null) window.clearTimeout(masterVolumeTimeoutId.value)
-      masterVolumeTimeoutId.value = window.setTimeout(onChangeMasterVolume, 100)
-    })
 
     watch(() => roomSettingState.roomSetting, () => {
       cycle.value = roomSettingState.roomSetting?.cycle || 0
@@ -243,10 +211,7 @@ export default defineComponent({
       isPrePlot,
       onStartPrePlot,
       onFixPrePlot,
-      onOpenPrePlot,
-      masterVolume,
-      masterMute,
-      onChangeMasterVolume
+      onOpenPrePlot
     }
   }
 })
@@ -256,7 +221,7 @@ export default defineComponent({
 @use "../../common";
 
 .scene-status-area {
-  @include common.flex-box(row, null, flex-end, wrap);
+  @include common.flex-box(row, flex-start, center);
   gap: 0.5rem;
 
   > span {
@@ -280,70 +245,6 @@ export default defineComponent({
   .readonly-scene {
     height: 2em;
     @include common.flex-box(column, center, center);
-  }
-
-  .master-volume {
-    &.mute .contents input[type="range"]::-webkit-slider-thumb {
-      border-color: #ffdae7;
-    }
-
-    .contents {
-      @include common.flex-box(row, flex-start, center);
-
-      input[type="range"] {
-        -webkit-appearance: none;
-        appearance: none;
-        background-color: #ffdae7;
-        height: 2px;
-        width: 100%;
-        border-radius: 6px;
-
-        &:focus,
-        &:active {
-          outline: none;
-        }
-
-        &::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          cursor: pointer;
-          position: relative;
-          width: 1rem;
-          height: 1rem;
-          display: block;
-          border: 2px solid #fb5986;
-          background-color: #fff;
-          border-radius: 50%;
-          -webkit-border-radius: 50%;
-        }
-      }
-
-      .mute-control {
-        input[type="checkbox"] {
-          display: none;
-        }
-        .foreground {
-          @include common.flex-box(row, flex-start, center);
-          gap: 0.2rem;
-          border: 1px solid gray;
-          border-radius: 0.5rem;
-          padding: 0.3rem;
-          user-select: none;
-          cursor: pointer;
-
-          &:after {
-            content: '';
-            width: 1em;
-          }
-        }
-
-        input:checked + .foreground {
-          &:after {
-            content: '✔︎';
-          }
-        }
-      }
-    }
   }
 }
 </style>

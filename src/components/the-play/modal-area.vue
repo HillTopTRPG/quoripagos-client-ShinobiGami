@@ -191,7 +191,7 @@ export default defineComponent({
   z-index: 50000;
 
   &.open {
-    backdrop-filter: blur(1px);
+    backdrop-filter: blur(2px);
     pointer-events: all;
   }
 

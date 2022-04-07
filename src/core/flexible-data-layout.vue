@@ -402,7 +402,7 @@ export default defineComponent({
 
 <style scoped lang="scss">
 .slot-input-form {
-  display: inline-flex;
+  display: flex;
   flex: 1;
   position: relative;
 }

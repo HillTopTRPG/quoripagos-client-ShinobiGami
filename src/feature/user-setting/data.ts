@@ -10,21 +10,23 @@ export type UserSetting = {
   accent1Color: string;
   accent2Color: string;
   sheetFontSize: number;
-  masterVolume: number;
-  masterMute: boolean;
 }
 
 type Store = {
   ready: boolean,
   userSettingList: StoreData<UserSetting>[];
   userSetting: UserSetting | null;
+  masterVolume: number;
+  masterMute: boolean;
   requestData: () => Promise<void>;
 }
 
 export default makeStore<Store>('user-setting-store', () => {
   const state = reactive<StoreUpdateProperties<Store, 'userSetting'>>({
     ready: false,
-    userSettingList: []
+    userSettingList: [],
+    masterVolume: 100,
+    masterMute: false
   })
 
   const userState = UserStore.injector()
@@ -37,9 +39,7 @@ export default makeStore<Store>('user-setting-store', () => {
       'fontColor',
       'accent1Color',
       'accent2Color',
-      'sheetFontSize',
-      'masterVolume',
-      'masterMute'
+      'sheetFontSize'
     ]
   )
 
@@ -61,9 +61,7 @@ export default makeStore<Store>('user-setting-store', () => {
         accent1Color: 'rgba(255, 40, 0, 1)',
         accent2Color: 'rgba(0, 111, 255, 1)',
         fontColor: '#3E2723',
-        sheetFontSize: 11,
-        masterVolume: 100,
-        masterMute: false
+        sheetFontSize: 11
       }
     })
     let intervalId: number | null = null
@@ -88,6 +86,18 @@ export default makeStore<Store>('user-setting-store', () => {
     },
     get ready() {
       return state.ready
+    },
+    get masterMute() {
+      return state.masterMute
+    },
+    get masterVolume() {
+      return state.masterVolume
+    },
+    set masterMute(val: boolean) {
+      state.masterMute = val
+    },
+    set masterVolume(val: number) {
+      state.masterVolume = val
     },
     get userSetting() {
       const user = userState.userList.find(u => u.key === userState.userLoginResponse?.userKey)

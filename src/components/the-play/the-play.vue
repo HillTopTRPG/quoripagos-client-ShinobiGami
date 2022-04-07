@@ -3,6 +3,9 @@
     <flexible-data-layout :definition="layoutData" :barSetDelay="2700">
       <modal-area />
       <special-input-area @submit="onDiceCommand()" />
+      <div class="cut-in-container">
+        <youtube-player :video-id="'e1xCOsgWG0M'"/>
+      </div>
       <div
         class="history-block"
         @click="onEndDiceRoll()"
@@ -198,11 +201,12 @@ import SceneStatusArea from '@/components/the-play/area/scene-status-area.vue'
 import SpecialInputArea from '@/components/the-play/special-input-area.vue'
 import SpecialInputStore from '@/feature/special-input/data'
 import RoomSettingStore from '@/feature/room-setting/data'
+import YoutubePlayer from '@/components/the-play/area/youtube-player.vue'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const layoutData = require('./the-play.yaml')
 
 export default defineComponent({
-  components: { SpecialInputArea, SceneStatusArea, DramaticSceneArea, CharacterDetailView, ModalArea, CharacterStatusArea, VelocityColumn },
+  components: { YoutubePlayer, SpecialInputArea, SceneStatusArea, DramaticSceneArea, CharacterDetailView, ModalArea, CharacterStatusArea, VelocityColumn },
   setup() {
     const characterState = CharacterStore.injector()
     const mediaListState = MediaListStore.injector()
@@ -881,7 +885,7 @@ textarea {
   align-items: center;
   z-index: 30001;
   gap: 0.5rem;
-  overflow-y: hidden !important;
+  overflow: hidden !important;
 }
 
 @include common.deep(".right-box") {
@@ -1297,6 +1301,18 @@ textarea {
   padding: 5px;
   overflow-x: auto;
   gap: 5px;
+}
+
+.cut-in-container {
+  @include common.flex-box(row, flex-end, flex-start);
+  gap: 0.5rem;
+  z-index: 70000;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
 }
 
 </style>
