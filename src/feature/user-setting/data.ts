@@ -10,6 +10,8 @@ export type UserSetting = {
   accent1Color: string;
   accent2Color: string;
   sheetFontSize: number;
+  masterVolume: number;
+  masterMute: boolean;
 }
 
 type Store = {
@@ -35,7 +37,9 @@ export default makeStore<Store>('user-setting-store', () => {
       'fontColor',
       'accent1Color',
       'accent2Color',
-      'sheetFontSize'
+      'sheetFontSize',
+      'masterVolume',
+      'masterMute'
     ]
   )
 
@@ -57,7 +61,9 @@ export default makeStore<Store>('user-setting-store', () => {
         accent1Color: 'rgba(255, 40, 0, 1)',
         accent2Color: 'rgba(0, 111, 255, 1)',
         fontColor: '#3E2723',
-        sheetFontSize: 11
+        sheetFontSize: 11,
+        masterVolume: 100,
+        masterMute: false
       }
     })
     let intervalId: number | null = null
