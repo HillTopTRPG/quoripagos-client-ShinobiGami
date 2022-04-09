@@ -1,13 +1,13 @@
 <template>
   <div class="image-input" :class="type">
-    <label :for="imageInfo.key" class="message" v-if="imageInfo.type === 'new-file' && imageInfo.name">未アップロード</label>
+    <label :for="`${imageInfo.key}-image-input`" class="message" v-if="imageInfo.type === 'new-file' && imageInfo.name">未アップロード</label>
     <template v-if="src">
-      <label :for="imageInfo.key">
+      <label :for="`${imageInfo.key}-image-input`">
         <img alt="" :src="src" :key="src">
       </label>
       <button v-if="deletable" @click="$emit('delete')">削除</button>
     </template>
-    <input v-else type="file" @change="onImageUploaded($event)" >
+    <input v-else :id="`${imageInfo.key}-image-input`" type="file" @change="onImageUploaded($event)" >
   </div>
 </template>
 

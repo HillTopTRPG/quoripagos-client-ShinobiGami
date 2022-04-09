@@ -170,8 +170,9 @@ export default defineComponent({
         name: imageInfo.name,
         arrayBuffer: imageInfo.src
       }]
-      await uploadAndKeyReplace(uploadMediaInfoList, imageInfo)
-      summary._imageKey = imageInfo.key
+      uploadAndKeyReplace(uploadMediaInfoList, imageInfo).then(() => {
+        summary._imageKey = imageInfo.key
+      })
     }
 
     const sendCutIn = (summary: Summary) => {

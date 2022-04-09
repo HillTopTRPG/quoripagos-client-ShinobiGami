@@ -30,13 +30,13 @@
           <tbody>
           <tr>
             <th><label :for="`scene-name-${element.key}`">名前</label></th>
-            <td class="name">
+            <td class="name" colspan="2">
               <input type="text" :id="`scene-name-${element.key}`" v-model="element.scene.name">
             </td>
           </tr>
           <tr v-if="viewMode === 'normal'">
             <th><label>画像</label></th>
-            <td>
+            <td colspan="2">
               <div class="h-box scene-image">
                 <image-input
                   :key="element.imageInfo.key"
@@ -54,6 +54,35 @@
                   v-if="element.imageInfo.type !== 'new-file'"
                   @click="onImageDelete(element.key)"
                 >画像削除</button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="viewMode === 'normal'">
+            <th><label :for="`${element.key}-youtube`">Youtube(Loop)</label></th>
+            <td>
+              <div class="h-box scene-youtube">
+                <input type="url" :id="`${element.key}-youtube`" v-model="element.scene.youtubeUrl">
+              </div>
+            </td>
+            <td>
+              <div class="h-box scene-bgm-range">
+                <input type="number" v-model="element.scene.bgmStartSecond">
+                <span>〜</span>
+                <div class="bgm-end" :class="{ 'is-use': element.scene.bgmEndSecondIsUse }">
+                  <input
+                    type="number"
+                    :value="element.scene.bgmEndSecond"
+                    @change="element.scene.bgmEndSecond = $event.target.valueAsNumber; element.scene.bgmEndSecondIsUse = true;"
+                  >
+                  <label
+                    class="deco"
+                    tabindex="0"
+                    :for="`${element.key}-bgm-end-second-is-use`"
+                    @keydown.space="element.scene.bgmEndSecondIsUse = !element.scene.bgmEndSecondIsUse"
+                    @keydown.enter="element.scene.bgmEndSecondIsUse = !element.scene.bgmEndSecondIsUse"
+                  >未使用</label>
+                  <input type="checkbox" :id="`${element.key}-bgm-end-second-is-use`" v-model="element.scene.bgmEndSecondIsUse">
+                </div>
               </div>
             </td>
           </tr>
@@ -134,7 +163,11 @@ export default defineComponent({
       state.insertData({
         data: {
           name: '',
-          backgroundImage: null
+          backgroundImage: null,
+          youtubeUrl: null,
+          bgmStartSecond: 0,
+          bgmEndSecond: 0,
+          bgmEndSecondIsUse: false
         }
       })
     }
@@ -158,10 +191,11 @@ export default defineComponent({
         name: wrapScene.imageInfo.name,
         arrayBuffer: wrapScene.imageInfo.src
       }]
-      await uploadAndKeyReplace(uploadMediaInfoList, wrapScene.imageInfo)
-      if (wrapScene.scene) {
-        wrapScene.scene.backgroundImage = wrapScene.imageInfo.key
-      }
+      uploadAndKeyReplace(uploadMediaInfoList, wrapScene.imageInfo).then(() => {
+        if (wrapScene.scene) {
+          wrapScene.scene.backgroundImage = wrapScene.imageInfo.key
+        }
+      })
     }
 
     const viewMode = ref<'normal' | 'simple' | 'alt'>('normal')
@@ -214,12 +248,52 @@ export default defineComponent({
   gap: 0.5em;
 }
 
-.h-box {
+.scene-image {
   @include common.flex-box(row, flex-start, center);
 
   input {
-    width: auto;
     flex: 1;
+  }
+}
+
+.scene-bgm-range {
+  @include common.flex-box(row, flex-start, center);
+
+  input[type="number"] {
+    width: 3em;
+  }
+
+  .bgm-end {
+    @include common.flex-box(row, flex-start, center);
+
+    &:not(.is-use) input[type="number"] {
+      opacity: 0.5;
+    }
+
+    &.is-use .deco:after {
+      content: '';
+    }
+
+    input[type="checkbox"] {
+      display: none;
+    }
+
+    .deco {
+       @include common.flex-box(row, center, center);
+       border: 1px solid gray;
+       border-radius: 3px;
+       padding: 0.1rem;
+
+       &:after {
+         content: '✔';
+         width: 1em;
+       }
+
+       &:active,
+       &:focus-visible {
+         outline: -webkit-focus-ring-color auto 1px;
+       }
+     }
   }
 }
 

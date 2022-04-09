@@ -6,6 +6,10 @@ import RoomSettingStore from '@/feature/room-setting/data'
 export type Scene = {
   name: string;
   backgroundImage: string | null;
+  youtubeUrl: string | null;
+  bgmStartSecond: number | null;
+  bgmEndSecond: number | null;
+  bgmEndSecondIsUse: boolean;
 }
 
 type Store = {
@@ -30,7 +34,11 @@ export default makeStore<Store>('scene-store', () => {
     'scene',
     [
       'name',
-      'backgroundImage'
+      'backgroundImage',
+      'youtubeUrl',
+      'bgmStartSecond',
+      'bgmEndSecond',
+      'bgmEndSecondIsUse'
     ]
   )
 
@@ -48,24 +56,23 @@ export default makeStore<Store>('scene-store', () => {
     const keyList = await insertData({
       data: {
         name: '通常',
-        backgroundImage: null
+        backgroundImage: null,
+        youtubeUrl: null,
+        bgmStartSecond: 0,
+        bgmEndSecond: 0,
+        bgmEndSecondIsUse: false
       }
     })
 
     const key: string = keyList[0]
 
-    console.log('uryyyyyyyyy')
-    console.log(key)
-    console.log(roomSettingState.roomSetting)
     if (roomSettingState.roomSetting) {
-      console.log('set key!!!')
       roomSettingState.roomSetting.sceneKey = key
     }
 
     let intervalId: number | null = null
     return new Promise((resolve) => {
       intervalId = window.setInterval(() => {
-        console.log(state.list[0]?.key === roomSettingState.roomSetting?.sceneKey, state.list[0]?.key, state.list[0]?.data?.name, roomSettingState.roomSetting?.sceneKey)
         if (getCurrentScene()) {
           if (intervalId !== null) {
             window.clearInterval(intervalId)

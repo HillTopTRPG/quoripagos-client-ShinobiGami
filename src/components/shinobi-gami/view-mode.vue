@@ -93,32 +93,7 @@ button {
 }
 
 .title {
-  position:relative;
-  margin-left: 10px;
-
-  &:before{
-    content: '';
-    position: absolute;
-    top: -6px;
-    left: -5px;
-    height: 15px;
-    width: 3px;
-    display: block;
-    background: #252525;
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3) inset;
-  }
-
-  &:after {
-    content: '';
-    position: absolute;
-    top: -1px;
-    left: -10px;
-    height: 3px;
-    width: 13px;
-    display: block;
-    background: #252525;
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3) inset;
-  }
+  font-size: 1.3em;
 }
 
 .view-mode {

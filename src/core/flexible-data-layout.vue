@@ -145,7 +145,7 @@ export function updateBarList(
           }
           if (data.layout === 'h-box') {
             layout.left = (side === 'after' ? rect.right : rect.left) + 'px'
-            layout.top = rect.y - 2 + 'px'
+            layout.top = rect.y - 1 + 'px'
             layout.height = rect.height + 2 + 'px'
           }
           if (ignoreUpdateKey === block.key) return

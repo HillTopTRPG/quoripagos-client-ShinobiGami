@@ -221,7 +221,7 @@ export default defineComponent({
 @use "../../common";
 
 .scene-status-area {
-  @include common.flex-box(row, flex-start, center);
+  @include common.flex-box(row, flex-start, flex-end);
   gap: 0.5rem;
 
   > span {
@@ -230,10 +230,10 @@ export default defineComponent({
 
   label {
     @include common.flex-box(column, null, flex-start);
-  }
 
-  span {
-    font-size: 80%;
+    > span {
+      font-size: 80%;
+    }
   }
 
   button,

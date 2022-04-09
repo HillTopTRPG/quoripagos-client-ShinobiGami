@@ -196,11 +196,12 @@ export default makeStore<Store>('scenario-store', () => {
   ): Promise<void> => {
     const uploadMediaInfoList: UploadMediaInfo[] = makeUploadMediaInfoList([mediaInfo])
     console.log(uploadMediaInfoList)
-    await uploadAndKeyReplace(uploadMediaInfoList, [mediaInfo])
-    character.chitImageList = mediaInfo[0].filter(t => t.type === 'uploaded').map(t => t.key)
-    if (character.currentChitImage === -1) character.currentChitImage = character.chitImageList.length ? 0 : -1
-    character.standImageList = mediaInfo[1].filter(t => t.type === 'uploaded').map(t => t.key)
-    if (character.currentStandImage === -1) character.currentStandImage = character.standImageList.length ? 0 : -1
+    uploadAndKeyReplace(uploadMediaInfoList, [mediaInfo]).then(() => {
+      character.chitImageList = mediaInfo[0].filter(t => t.type === 'uploaded').map(t => t.key)
+      if (character.currentChitImage === -1) character.currentChitImage = character.chitImageList.length ? 0 : -1
+      character.standImageList = mediaInfo[1].filter(t => t.type === 'uploaded').map(t => t.key)
+      if (character.currentStandImage === -1) character.currentStandImage = character.standImageList.length ? 0 : -1
+    })
   }
 
   const getChitStatus = (

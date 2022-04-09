@@ -4,7 +4,14 @@
       <modal-area />
       <special-input-area @submit="onDiceCommand()" />
       <div class="cut-in-container">
-        <youtube-player :video-id="'e1xCOsgWG0M'"/>
+        <youtube-player
+          :video-id="youtubePlayId"
+          :start="bgmStartSecond"
+          :end="bgmEndSecond"
+          :use-end="bgmEndSecondIsUse"
+          :loop="isLoop"
+          @end="youtubePlayId = ''"
+        />
       </div>
       <div
         class="history-block"
@@ -115,6 +122,7 @@
             <option :value="n.key" v-for="n in targetCharacterList" :key="n.key">{{ n.name }}</option>
           </select>
           <button @click="onChangeMode('SG')">SGコマンド</button>
+          <div class="space"></div>
         </div>
         <textarea
           id="chat-input"
@@ -202,6 +210,7 @@ import SpecialInputArea from '@/components/the-play/special-input-area.vue'
 import SpecialInputStore from '@/feature/special-input/data'
 import RoomSettingStore from '@/feature/room-setting/data'
 import YoutubePlayer from '@/components/the-play/area/youtube-player.vue'
+import { getUrlParam } from '@/core/utility/FileUtility'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const layoutData = require('./the-play.yaml')
 
@@ -233,6 +242,11 @@ export default defineComponent({
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalStyle = reactive<any>({})
+    const youtubePlayId = ref('')
+    const bgmStartSecond = ref(0)
+    const bgmEndSecond = ref(0)
+    const bgmEndSecondIsUse = ref(false)
+    const isLoop = ref(true)
     watch(() => userSettingState.userSetting, () => {
       const a = userSettingState.userSetting
       globalStyle['--accent1-color'] = a?.accent1Color || globalStyle['--accent1-color']
@@ -243,6 +257,11 @@ export default defineComponent({
     watch(() => sceneState.currentScene, () => {
       const bgImageUrl = mediaListState.list.find(n => n.key === sceneState?.currentScene?.backgroundImage)?.data?.url
       globalStyle['--background-image'] = bgImageUrl ? `url('${bgImageUrl}')` : ''
+      youtubePlayId.value = getUrlParam('v', sceneState?.currentScene?.youtubeUrl || '') || ''
+      bgmStartSecond.value = sceneState?.currentScene?.bgmStartSecond || 0
+      bgmEndSecond.value = sceneState?.currentScene?.bgmEndSecond || 0
+      bgmEndSecondIsUse.value = sceneState?.currentScene?.bgmEndSecondIsUse || false
+      isLoop.value = true
     }, { deep: true, immediate: true })
 
     const reactiveLayout = reactive<SlotUnionInfo>(layoutData)
@@ -583,7 +602,12 @@ export default defineComponent({
       sendMessage,
       getTimeFormat,
       isMobile,
-      openSecretDiceRoll
+      openSecretDiceRoll,
+      youtubePlayId,
+      isLoop,
+      bgmStartSecond,
+      bgmEndSecond,
+      bgmEndSecondIsUse
     }
   },
   name: 'the-play'
@@ -611,7 +635,7 @@ export default defineComponent({
   &.battle-field-1 {
     @include common.deep("#section-core") {
       .effect-container:before {
-        backdrop-filter: blur(1px) brightness(0.9);
+        backdrop-filter: blur(2px) brightness(0.75);
         background-color: rgba(0, 0, 255, 0.05);
       }
     }
@@ -899,7 +923,7 @@ textarea {
   .bottom-box-left {
     @include common.flex-box(column, stretch, flex-start);
 
-    > * {
+    .space {
       flex: 1;
     }
   }
